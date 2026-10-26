@@ -94,10 +94,28 @@ describe("项目结构", () => {
   const appJson = JSON.parse(read(path.join(MP, "app.json")));
 
   test("app.json 里声明的每个页面都存在 .js/.wxml", () => {
-    for (const page of appJson.pages) {
+    // 分包（2026-10-27 起有 evo：Evo 战绩的子页面）里的页面路径要加上分包的 root
+    const sub = (appJson.subpackages || []).flatMap((p) => p.pages.map((x) => p.root + "/" + x));
+    for (const page of appJson.pages.concat(sub)) {
       for (const ext of [".js", ".wxml"]) {
         const f = path.join(MP, page + ext);
         assert.ok(existsSync(f), "缺少页面文件 " + page + ext);
+      }
+    }
+  });
+
+  test("主包页面异步引用的分包组件：路径真实存在，且都配了占位组件", () => {
+    // 「战绩」「我的」两个 tab 页用分包 evo 里的组件（主包只剩约 120 KB 余量）。
+    // 跨分包引用必须配 componentPlaceholder，否则分包还没下载完时页面直接报错
+    for (const page of appJson.pages) {
+      const f = path.join(MP, page + ".json");
+      if (!existsSync(f)) continue;
+      const cfg = JSON.parse(read(f));
+      for (const [name, target] of Object.entries(cfg.usingComponents || {})) {
+        if (!/^\/evo\//.test(target)) continue;
+        assert.ok(existsSync(path.join(MP, target + ".js")), page + " 引用的组件不存在：" + target);
+        assert.ok(cfg.componentPlaceholder && cfg.componentPlaceholder[name],
+          page + " 跨分包引用 " + name + " 却没配 componentPlaceholder");
       }
     }
   });
@@ -177,12 +195,15 @@ describe("底部标签", () => {
   const appJson = JSON.parse(read(path.join(MP, "app.json")));
   const bar = appJson.tabBar;
 
-  test("配了 tabBar，且四个标签顺序是 地图 / 排位专区 / 比赛 / 小游戏", () => {
+  test("配了 tabBar，且五个标签顺序是 地图 / 战绩 / 比赛 / 小游戏 / 我的", () => {
     assert.ok(bar, "app.json 里没有 tabBar");
-    assert.equal(bar.list.length, 4);
+    assert.equal(bar.list.length, 5);
     // 第 4 个：2026-10-16 从「战绩」换成「猜圈」，2026-10 又扩成「小游戏」分类
     //（里面是猜圈练习 + 英雄/武器轮盘，用户要求放在同一个分类下）。
-    assert.deepEqual([...bar.list].map((t) => t.text), ["地图", "排位专区", "比赛", "小游戏"]);
+    // 2026-10-27：第 2 个「排位专区」改叫「战绩」（顶部切换：我的战绩 ｜ 排位资讯），加了第 5 个「我的」（Evo 绑定）。
+    // 微信的 tabBar 最多 5 个，已经满了。
+    assert.deepEqual([...bar.list].map((t) => t.text), ["地图", "战绩", "比赛", "小游戏", "我的"]);
+    assert.equal(bar.list[1].pagePath, "pages/predator/predator", "「战绩」还是原来排位专区那一页（排位资讯是它的一栏）");
   });
 
   test("「小游戏」是分类页：猜圈练习 / 圈型速判 / 轮盘都从它进去（而不是各占一个 tab）", () => {
@@ -283,9 +304,35 @@ const AD_PAGES = ["maps", "predator", "matches"];
 /* 需要做"通用正确性"检查的页面：WXML 绑定一致性、标签成对闭合、样式类有定义。
    新加的页面要加进来 —— 这几条正是抓"字段写错/标签没闭合/类名拼错"的网。
    （原来的 pages/mapview「交互地图」已删，所以这里也没有它了。） */
-const PAGE_NAMES = AD_PAGES.concat(["games", "wheel", "ringguessr", "ringpick"]);
-const pageJsPath = (n) => path.join(MP, "pages", n, n + ".js");
-const pageWxmlPath = (n) => path.join(MP, "pages", n, n + ".wxml");
+// 2026-10-27：加了「我的」（me）和分包 evo 里 Evo 战绩的三个子页面（写成 "evo/matches" 这样带分包目录的名字）
+const PAGE_NAMES = AD_PAGES.concat(["games", "wheel", "ringguessr", "ringpick", "me", "evo/matches", "evo/match", "evo/bind"]);
+const pageDir = (n) => (n.indexOf("/") >= 0 ? path.join(MP, n) : path.join(MP, "pages", n));
+const pageBase = (n) => path.basename(n);
+const pageJsPath = (n) => path.join(pageDir(n), pageBase(n) + ".js");
+const pageWxmlPath = (n) => path.join(pageDir(n), pageBase(n) + ".wxml");
+const pageWxssPath = (n) => path.join(pageDir(n), pageBase(n) + ".wxss");
+/* 自定义组件（目前都是 Evo 战绩的，在分包 evo 里）：和页面一样做绑定一致性 / 标签闭合 / 样式类检查 */
+const COMPONENT_NAMES = ["evo/components/overview", "evo/components/devices"];
+const compPath = (n, ext) => path.join(MP, n, "index" + ext);
+
+/** 读 wxss，把 @import 进来的文件也接上（Evo 的页面和组件共用 evo/evo.wxss） */
+function readWxss(file) {
+  if (!existsSync(file)) return "";
+  const src = read(file);
+  return src.replace(/@import\s+["']([^"']+)["'];?/g, (all, rel) => readWxss(path.resolve(path.dirname(file), rel)));
+}
+
+/** 用桩把某个组件加载起来，拿到 Component({properties, data}) 声明的字段 */
+function compDataKeys(name) {
+  let def = null;
+  global.Component = (d) => { def = d; };
+  global.wx = { cloud: { callFunction() {} }, stopPullDownRefresh() {} };
+  const p = compPath(name, ".js");
+  delete require.cache[require.resolve(p)];
+  require(p);
+  assert.ok(def, name + " 没有调用 Component()");
+  return Object.keys(def.data || {}).concat(Object.keys(def.properties || {}));
+}
 
 /** 用桩把某个页面加载起来，拿到 Page({data}) 声明的字段 */
 function pageDataKeys(name) {
@@ -430,6 +477,44 @@ function vmFieldNames() {
   );
   sched.forEach((g) => { collect(g); (g.rows || []).forEach(collect); });
 
+  // Evo 战绩（2026-10-27，分包 evo）：evo/utils/view.js 拼出来的字段，样例数据把每个分支都走一遍
+  const evoView = require(path.resolve(HERE, "..", "miniprogram", "evo", "utils", "view.js"));
+  const i18nT = require(path.resolve(HERE, "..", "miniprogram", "utils", "i18n.js")).T("zh");
+  const evoRow = { id: "u:1", ended_at: "2026-10-26 21:03:00", placement: 1, mode: "ranked", map: "残月", legend: "恶灵",
+    kills: 3, assists: 1, knockdowns: 4, damage: 1234, rp: 56, needs_review: true };
+  const evoOv = evoView.overview({
+    bound: true, accounts: [{ key: "0", name: "a" }, { key: "1", name: "b" }], account: "0", range: "30",
+    today: "2026-10-26", yesterday: "2026-10-25", total: 1,
+    rank: { tier: "diamond", division: "II", progress: 12, when: "2026-10-26 21:03:00", from_lobby: true },
+    chart: { points: [0.5, 0.4], lines: [{ y: 0.3, tier: "diamond", division: "I" }], count: 2 },
+    range_rp: 56, today_rp: 56, today_games: 1,
+    stats: { games: 1, avg_place: 1, avg_kills: 3, avg_damage: 1234, top5: 100, win_rate: 100 },
+    recent: [evoRow],
+    legends: [{ name: "恶灵", games: 1, avg_damage: 1234, segments: [{ css: "p1", width: 100 }], other: false }],
+    review_count: 1,
+  }, i18nT, 160);
+  collect(evoOv);
+  collect(evoOv.picker);
+  collect(evoOv.rank);
+  collect(evoOv.chart);
+  evoOv.stats.forEach(collect);
+  evoOv.recent.forEach(collect);
+  evoOv.legends.forEach((l) => { collect(l); l.segments.forEach(collect); });
+  collect(evoView.matchesView({ accounts: [], rows: [evoRow], review_count: 0, total: 1, page: 1, pages: 1 }, i18nT));
+  const evoDetail = evoView.detail({ today: "2026-10-26", yesterday: "2026-10-25", match: Object.assign({}, evoRow, {
+    rp_source: "xp", rank_tier: "diamond", rank_division: "II", rank_progress: 12, review_note: "x", no_summary: true,
+    mates: [{ name: "x", player_id: "1", legend: "命脉", kills: 1, assists: 0, knockdowns: 1, damage: 100,
+      survival_time: 600, revives: 1, respawns: 0 }],
+  }) }, i18nT);
+  collect(evoDetail);
+  evoDetail.facts.forEach(collect);
+  evoDetail.mates.forEach(collect);
+  const evoDev = evoView.devicesView({ devices: [{ id: "u", bound_at: "x", last_upload_at: "x", app_version: "1", matches: 2 }],
+    accounts: [{ name: "a", names: 2 }] }, i18nT);
+  collect(evoDev);
+  evoDev.devices.forEach(collect);
+  evoDev.accounts.forEach(collect);
+
   // 中英文词表。页面把 i18n.T(lang) 整个放进 data，WXML 里写 {{T.xxx}}，
   // 所以词表的每个 key 都要登记（否则会被当成"没有来源的标识符"）。
   const i18n = require(path.resolve(HERE, "..", "miniprogram", "utils", "i18n.js"));
@@ -473,6 +558,21 @@ describe("WXML 绑定与数据字段一致", () => {
     });
   }
 
+  for (const name of COMPONENT_NAMES) {
+    test(name + "：组件 WXML 里绑定的每个标识符都有来源", () => {
+      const wxml = read(compPath(name, ".wxml"));
+      const allowed = new Set([...compDataKeys(name), ...VM_FIELDS, "item", "index", "s", "true", "false", "null", "undefined"]);
+      const cleaned = wxml.replace(/'[^']*'/g, "''").replace(/"[^"]*"/g, '""');
+      const unknown = new Set();
+      for (const m of cleaned.matchAll(/\{\{([\s\S]*?)\}\}/g)) {
+        for (const chain of m[1].matchAll(/[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*/g)) {
+          chain[0].split(".").forEach((tok) => { if (!allowed.has(tok)) unknown.add(tok); });
+        }
+      }
+      assert.deepEqual([...unknown], [], name + " 的 WXML 绑了没人提供的字段：" + JSON.stringify([...unknown]));
+    });
+  }
+
   test("页面 data 里声明的字段在 WXML 里确实用到了（防止改名后留下死字段）", () => {
     // 这几个是给 JS 用的中间状态 / 传参，不一定要出现在 WXML
     const jsOnly = new Set(["playerInput", "platformIndex", "platformLabels", "loading"]);
@@ -500,8 +600,10 @@ describe("WXML 绑定与数据字段一致", () => {
       "open-data", "web-view", "import", "include", "wxs",
     ]);
 
-    for (const name of PAGE_NAMES) {
-      const src = read(pageWxmlPath(name)).replace(/<!--[\s\S]*?-->/g, "");
+    const files = PAGE_NAMES.map(pageWxmlPath).concat(COMPONENT_NAMES.map((n) => compPath(n, ".wxml")));
+    for (const file of files) {
+      const name = path.relative(MP, file);
+      const src = read(file).replace(/<!--[\s\S]*?-->/g, "");
       const stack = [];
       for (const m of src.matchAll(/<(\/?)([a-zA-Z][\w-]*)((?:"[^"]*"|'[^']*'|[^>"'])*?)(\/?)>/g)) {
         const closing = m[1] === "/";
@@ -531,16 +633,18 @@ describe("WXML 绑定与数据字段一致", () => {
 
   test("WXML 用到的样式类都在 WXSS 里有定义", () => {
     const wxssFiles = [path.join(MP, "app.wxss")].concat(
-      PAGE_NAMES.map((n) => path.join(MP, "pages", n, n + ".wxss"))
+      PAGE_NAMES.map(pageWxssPath), COMPONENT_NAMES.map((n) => compPath(n, ".wxss"))
     ).filter(existsSync);
     assert.ok(wxssFiles.length > 0, "一个 wxss 都没有，样式全丢了");
-    const wxss = wxssFiles.map(read).join("\n");
+    const wxss = wxssFiles.map(readWxss).join("\n");
     const isDefined = (c) => new RegExp("\\." + c.replace(/[-]/g, "\\-") + "(?![\\w-])").test(wxss);
 
     const missing = [];
     let sawAny = false;
-    for (const name of PAGE_NAMES) {
-      const wxml = read(pageWxmlPath(name));
+    const wxmlFiles = PAGE_NAMES.map(pageWxmlPath).concat(COMPONENT_NAMES.map((n) => compPath(n, ".wxml")));
+    for (const file of wxmlFiles) {
+      const name = path.relative(MP, file);
+      const wxml = read(file);
       // 把 class / placeholder-class 的值取出来。必须限定成独立属性，
       // 否则 /class="..."/ 会把 placeholder-class 也一起匹配进来。
       for (const m of wxml.matchAll(/(?:^|\s)(class|placeholder-class)="([^"]*)"/g)) {

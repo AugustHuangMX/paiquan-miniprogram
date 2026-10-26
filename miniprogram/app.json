@@ -6,7 +6,19 @@
     "pages/games/games",
     "pages/ringguessr/ringguessr",
     "pages/ringpick/ringpick",
-    "pages/wheel/wheel"
+    "pages/wheel/wheel",
+    "pages/me/me"
+  ],
+  "subpackages": [
+    {
+      "root": "evo",
+      "name": "evo",
+      "pages": [
+        "matches/matches",
+        "match/match",
+        "bind/bind"
+      ]
+    }
   ],
   "window": {
     "navigationBarTitleText": "英雄地图轮换助手",
@@ -29,9 +41,9 @@
       },
       {
         "pagePath": "pages/predator/predator",
-        "text": "排位专区",
-        "iconPath": "assets/tab-predator.png",
-        "selectedIconPath": "assets/tab-predator-on.png"
+        "text": "战绩",
+        "iconPath": "assets/tab-stats.png",
+        "selectedIconPath": "assets/tab-stats-on.png"
       },
       {
         "pagePath": "pages/matches/matches",
@@ -44,6 +56,12 @@
         "text": "小游戏",
         "iconPath": "assets/tab-games.png",
         "selectedIconPath": "assets/tab-games-on.png"
+      },
+      {
+        "pagePath": "pages/me/me",
+        "text": "我的",
+        "iconPath": "assets/tab-me.png",
+        "selectedIconPath": "assets/tab-me-on.png"
       }
     ]
   },

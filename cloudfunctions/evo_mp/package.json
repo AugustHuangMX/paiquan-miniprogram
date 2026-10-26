@@ -1,0 +1,10 @@
+{
+  "name": "evo_mp",
+  "version": "1.0.0",
+  "description": "小程序里「我的战绩」「我的」调用的云函数（见 AI-CONTEXT.md §17）",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~4.0.2"
+  }
+}

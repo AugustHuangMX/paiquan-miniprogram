@@ -1,0 +1,13 @@
+{
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "我的",
+  "enablePullDownRefresh": false,
+  "backgroundTextStyle": "light",
+  "backgroundColor": "#0a0c10",
+  "usingComponents": {
+    "evo-devices": "/evo/components/devices/index"
+  },
+  "componentPlaceholder": {
+    "evo-devices": "view"
+  }
+}

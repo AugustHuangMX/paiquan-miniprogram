@@ -1,0 +1,109 @@
+/* Evo 战绩几个页面、组件共用的样式（各自的 wxss 用 @import 引进来）。
+   颜色只用 app.wxss 的令牌（var(--x)，从页面的 .wrap 继承下来，深浅主题自动跟着换）；
+   字号只用 7 档令牌，间距落在 4rpx 网格上，字重只用 400 / 700 / 800（AI-CONTEXT §7）。
+   .panel / .sec-title / .msg / .langsw / .tabs 用 app.wxss 的 */
+
+.evo { color: var(--ink); }
+.evo-grow { flex: 1; min-width: 0; }
+.evo-pressed { opacity: 0.7; }
+.evo-t { display: block; font-size: var(--fs-head); font-weight: var(--fw-bold); margin-bottom: var(--sp-2); }
+.evo-dim { display: block; font-size: var(--fs-sub); color: var(--ink3); }
+.evo-k { display: block; font-size: var(--fs-min); color: var(--ink3); }
+.evo-muted { color: var(--ink3); }
+
+/* 读取中：和读好后差不多高的空卡片，免得页面跳 */
+.evo-skel { height: 320rpx; box-sizing: border-box; }
+
+.evo-retry {
+  display: inline-block;
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-8);
+  border: 1rpx solid currentColor;
+  border-radius: var(--r-full);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-bold);
+}
+
+/* 主按钮：热区 ≥ 80rpx（无障碍要求） */
+.evo-cta {
+  margin-top: var(--sp-6);
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  border-radius: var(--r-lg);
+  background: var(--accent);
+  color: #ffffff;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+}
+.evo-btn2 {
+  margin-top: var(--sp-4);
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  border-radius: var(--r-lg);
+  background: var(--raised);
+  border: 1rpx solid var(--line);
+  color: var(--ink);
+  font-size: var(--fs-body);
+}
+
+/* ---------- 账号切换 ---------- */
+.evo-account {
+  display: flex;
+  align-items: center;
+  min-height: 80rpx;
+  padding: 0 var(--sp-6);
+  margin-bottom: var(--sp-4);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-xl);
+  box-sizing: border-box;
+}
+.evo-account-v { flex: 1; min-width: 0; margin: 0 var(--sp-4); font-size: var(--fs-body); font-weight: var(--fw-bold); }
+
+/* RP 涨跌：数字自带 +/− 号，颜色只是辅助（颜色不单独表意） */
+.evo-rp-good { color: var(--up); }
+.evo-rp-bad { color: var(--down); }
+.evo-rp-none { color: var(--ink3); }
+
+/* ---------- 对局列表 ---------- */
+.evo-list { padding-top: var(--sp-4); padding-bottom: var(--sp-2); }
+.evo-row { display: flex; align-items: center; min-height: 96rpx; border-bottom: 1rpx solid var(--track); }
+.evo-row-last { border-bottom: none; }
+/* 名次：数字本身就是信息，颜色只区分冠军 / 前三 / 前十 / 其余 */
+.evo-badge {
+  flex: none;
+  width: 72rpx;
+  margin-right: var(--sp-3);
+  padding: var(--sp-1) 0;
+  text-align: center;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-num);
+  font-variant-numeric: tabular-nums;
+}
+.evo-p1 { background: var(--accent); color: #ffffff; }
+.evo-p2 { background: var(--raised); color: var(--warn-ink); }
+.evo-p3 { background: var(--raised); color: var(--ink); }
+.evo-p4 { background: var(--glass); color: var(--ink3); }
+.evo-p-none { background: var(--glass); color: var(--ink3); }
+.evo-ic { flex: none; width: 56rpx; height: 56rpx; margin-right: var(--sp-3); border-radius: var(--r-md); background: var(--sunken); }
+.evo-ic-none { background: var(--glass); }
+.evo-row-main { flex: 1; min-width: 0; }
+.evo-row-t { display: flex; align-items: center; }
+.evo-clip { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--fs-body); font-weight: var(--fw-bold); }
+.evo-row-dmg { flex: none; margin-left: var(--sp-3); text-align: right; }
+.evo-row-n { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+.evo-row-rp { flex: none; width: 112rpx; text-align: right; font-size: var(--fs-body); font-weight: var(--fw-num); font-variant-numeric: tabular-nums; }
+.evo-tag {
+  flex: none;
+  margin-left: var(--sp-2);
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-sm);
+  border: 1rpx solid var(--warn);
+  color: var(--warn-ink);
+  font-size: var(--fs-min);
+}
+.evo-foot { padding: var(--sp-6) 0 var(--sp-4); text-align: center; font-size: var(--fs-min); color: var(--ink3); }
+.evo-more { color: var(--accent-ink); font-weight: var(--fw-bold); }

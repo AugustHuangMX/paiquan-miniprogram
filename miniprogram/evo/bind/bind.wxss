@@ -1,0 +1,6 @@
+/* 绑定确认。共用的（按钮）在 evo/evo.wxss */
+@import "../evo.wxss";
+
+.evo-code { display: block; margin-top: var(--sp-4); font-size: var(--fs-sub); color: var(--ink2); font-variant-numeric: tabular-nums; }
+.evo-ok { color: var(--ok-ink); }
+.evo-busy { opacity: 0.6; }

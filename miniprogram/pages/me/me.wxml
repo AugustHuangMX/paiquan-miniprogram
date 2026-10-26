@@ -1,0 +1,29 @@
+<view class="wrap theme-{{theme}}" data-lang="{{lang}}">
+
+  <!-- 自定义导航栏：⚙ 常驻左上角，和地图页、「战绩」页一模一样 -->
+  <view class="navbar" style="padding-top: {{navTop}}px; height: {{navH}}px;">
+    <view class="navbtn {{panelOpen ? 'navbtn-on' : ''}}" bindtap="onTogglePanel">⚙</view>
+    <text class="navtitle">{{T.navMe}}</text>
+    <view class="navspace" style="width: {{navRight}}px;"></view>
+  </view>
+
+  <view wx:if="{{panelOpen}}" class="panel">
+    <view class="panel-t">{{T.panelLang}}</view>
+    <view class="panel-row">
+      <view class="langsw">
+        <view class="langsw-i langsw-l {{lang === 'zh' ? 'langsw-on' : ''}}" data-l="zh" bindtap="onLang">中文</view>
+        <view class="langsw-i langsw-r {{lang === 'en' ? 'langsw-on' : ''}}" data-l="en" bindtap="onLang">EN</view>
+      </view>
+    </view>
+    <view class="panel-t">{{T.panelTheme}}</view>
+    <view class="panel-row">
+      <view class="langsw">
+        <view class="langsw-i langsw-l {{theme === 'dark' ? 'langsw-on' : ''}}" data-t="dark" bindtap="onTheme">{{T.themeDark}}</view>
+        <view class="langsw-i langsw-r {{theme === 'light' ? 'langsw-on' : ''}}" data-t="light" bindtap="onTheme">{{T.themeLight}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Evo 的绑定（分包 evo 里的组件，异步加载；加载前先占一个空 view） -->
+  <evo-devices lang="{{lang}}"></evo-devices>
+</view>

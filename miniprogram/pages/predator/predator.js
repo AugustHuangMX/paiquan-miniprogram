@@ -48,6 +48,9 @@ function navMetrics() {
 
 Page({
   data: {
+    // 顶部切换：mine = 我的战绩（Evo），ranked = 排位资讯（原排位专区）。
+    // 先显示 ranked（和改版前一样）；「我的战绩」读完发现绑定了 Evo，再切过去（onEvoStatus）
+    seg: "ranked",
     proQuery: "",        // 选手搜索词
     proExpand: false,       // 是否展开全部选手
     proChipsView: [],      // 实际渲染的选手（前 12 或过滤后）
@@ -95,6 +98,31 @@ Page({
   /** 广告拉取失败不影响页面任何功能，记一下就行 */
   onAdError: function (e) {
     console.warn("广告加载失败", e && e.detail);
+  },
+
+  /** 顶部切换：用户点过以后就不再自动切 */
+  onSeg: function (e) {
+    var seg = e.currentTarget.dataset.seg;
+    this._segTouched = true;
+    if (seg === this.data.seg) return;
+    var self = this;
+    this.setData({ seg: seg }, function () { if (seg === "mine") self.redrawEvo(); });
+  },
+
+  /**
+   * 「我的战绩」读完了：绑定了 Evo 的人默认看自己的战绩。
+   * 没绑定的人（现在的绝大多数用户）留在「排位资讯」—— 不然每次点进来先看到"去绑定"，猎杀线反而要多点一下。
+   */
+  onEvoStatus: function (e) {
+    if (this._segTouched || !e.detail || !e.detail.bound || this.data.seg === "mine") return;
+    var self = this;
+    this.setData({ seg: "mine" }, function () { self.redrawEvo(); });
+  },
+
+  /** 走势图是 canvas，藏着的时候画不上（宽度是 0），切到「我的战绩」时重画 */
+  redrawEvo: function () {
+    var c = this.selectComponent("#evo-ov");
+    if (c && c.drawChart) c.drawChart();
   },
 
   /** ⚙ 设置面板：语言和主题（和地图页共用同一份全局状态） */
@@ -194,7 +222,9 @@ Page({
   },
 
   onPullDownRefresh: function () {
-    this.refresh().then(function () { wx.stopPullDownRefresh(); });
+    var evo = this.data.seg === "mine" ? this.selectComponent("#evo-ov") : null;
+    var job = evo && evo.load ? evo.load() : this.refresh();
+    job.then(function () { wx.stopPullDownRefresh(); });
   },
 
   refresh: function () {

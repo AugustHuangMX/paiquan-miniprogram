@@ -1,0 +1,65 @@
+<view class="wrap theme-{{theme}}" data-lang="{{lang}}">
+  <view wx:if="{{state === 'loading'}}" class="panel evo-skel"></view>
+
+  <view wx:elif="{{state === 'error'}}" class="msg msg-err">
+    <text class="msg-title">{{T.evoMatchLoadFail}}</text>
+    <text class="msg-body">{{error}}</text>
+    <view class="evo-retry" hover-class="evo-pressed" bindtap="onRetry">{{T.evoRetry}}</view>
+  </view>
+
+  <block wx:else>
+    <!-- 头部：名次、传奇 · 地图、模式 · 时间、RP 和它从哪读来的 -->
+    <view class="panel {{m.review ? 'evo-head-review' : ''}}">
+      <view class="evo-head-top">
+        <text class="evo-badge evo-badge-big evo-{{m.badge}}">{{m.place}}</text>
+        <image wx:if="{{m.icon}}" class="evo-ic evo-ic-big" src="{{m.icon}}" mode="aspectFill"></image>
+        <view class="evo-grow">
+          <text class="evo-head-t {{m.unknown ? 'evo-muted' : ''}}">{{m.title}}</text>
+          <text class="evo-k">{{m.sub}}</text>
+        </view>
+        <view class="evo-head-rp">
+          <text class="evo-head-rpv evo-rp-{{m.rpCls}}">{{m.rp}}</text>
+          <text wx:if="{{m.rpFrom}}" class="evo-k">{{m.rpFrom}}</text>
+        </view>
+      </view>
+      <view wx:if="{{m.review}}" class="msg msg-warn evo-review-box">
+        <text class="msg-title">{{T.evoReviewBox}}</text>
+        <text wx:if="{{m.reviewNote}}" class="msg-body">{{m.reviewNote}}</text>
+      </view>
+    </view>
+
+    <view class="sec-title">{{T.evoThisMatch}}</view>
+    <view class="panel">
+      <view class="kv evo-facts">
+        <view wx:for="{{m.facts}}" wx:key="key" class="kv-item">
+          <text class="kv-k">{{item.label}}</text>
+          <view class="kv-v">{{item.value}}</view>
+        </view>
+      </view>
+      <text class="evo-k" user-select="{{true}}">{{m.meta}}</text>
+    </view>
+
+    <view class="sec-title">{{T.evoMates}}</view>
+    <view class="panel">
+      <text wx:if="{{!m.mates.length}}" class="evo-dim">{{T.evoNoMates}}</text>
+      <view wx:for="{{m.mates}}" wx:key="key" class="evo-mate {{index === m.mates.length - 1 ? 'evo-mate-last' : ''}}">
+        <view class="evo-mate-head">
+          <image wx:if="{{item.icon}}" class="evo-ic" src="{{item.icon}}" mode="aspectFill"></image>
+          <view wx:else class="evo-ic evo-ic-none"></view>
+          <view class="evo-grow">
+            <text class="evo-mate-name" user-select="{{true}}">{{item.name}}</text>
+            <text class="evo-k">{{item.legend}}</text>
+          </view>
+        </view>
+        <text wx:if="{{item.id}}" class="evo-k" user-select="{{true}}">ID {{item.id}}</text>
+        <view class="evo-mate-stats">
+          <view class="evo-mate-cell"><text class="evo-k">{{T.evoKda}}</text><text class="evo-mate-v">{{item.kda}}</text></view>
+          <view class="evo-mate-cell"><text class="evo-k">{{T.evoDamage}}</text><text class="evo-mate-v">{{item.damage}}</text></view>
+          <view class="evo-mate-cell"><text class="evo-k">{{T.evoMateSurvival}}</text><text class="evo-mate-v">{{item.survival}}</text></view>
+          <view class="evo-mate-cell"><text class="evo-k">{{T.evoMateRevRes}}</text><text class="evo-mate-v">{{item.revRes}}</text></view>
+        </view>
+      </view>
+      <view wx:if="{{m.noSummary}}" class="note">{{T.evoNoSummary}}</view>
+    </view>
+  </block>
+</view>

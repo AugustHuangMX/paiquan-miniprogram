@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "openapi": [
+      "wxacode.getUnlimited"
+    ]
+  },
+  "triggers": [
+    {
+      "name": "refill",
+      "type": "timer",
+      "config": "0 */5 * * * * *"
+    }
+  ]
+}

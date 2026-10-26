@@ -1,3 +1,24 @@
+/* ================= 顶部切换：我的战绩 ｜ 排位资讯（2026-10-27） =================
+   两半等宽的胶囊，样子同 app.wxss 的 .langsw（语言开关），但要占满一行、热区 ≥ 80rpx。 */
+.segsw {
+  display: flex;
+  margin-bottom: var(--sp-6);
+  padding: var(--sp-1);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-full);
+}
+.segsw-i {
+  flex: 1;
+  height: 72rpx;
+  line-height: 72rpx;
+  text-align: center;
+  border-radius: var(--r-full);
+  font-size: var(--fs-body);
+  color: var(--ink2);
+}
+.segsw-on { color: #ffffff; background: var(--accent); font-weight: var(--fw-bold); }
+
 
 
 /* ================= 本赛季段位分布 ================= */

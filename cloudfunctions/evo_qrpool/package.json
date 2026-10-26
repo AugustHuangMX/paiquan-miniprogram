@@ -1,0 +1,10 @@
+{
+  "name": "evo_qrpool",
+  "version": "1.0.0",
+  "description": "Evo 绑定用的小程序码池，定时生成（见 AI-CONTEXT.md §17）",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~4.0.2"
+  }
+}

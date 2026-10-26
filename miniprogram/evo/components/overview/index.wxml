@@ -1,0 +1,150 @@
+<!-- 「我的战绩」：电脑上的 Evo 记下、同步到云端的战绩（同 Evo 窗口的总览页）。
+     放在「战绩」页顶部切换的第一栏；没绑定时教怎么绑定。字段由 evo/utils/view.js 的 overview() 拼好 -->
+<view class="evo">
+  <block wx:if="{{state === 'loading'}}">
+    <view class="panel evo-skel evo-skel-rank"></view>
+    <view class="panel evo-skel evo-skel-chart"></view>
+  </block>
+
+  <view wx:elif="{{state === 'error'}}" class="msg msg-err">
+    <text class="msg-title">{{T.evoLoadFail}}</text>
+    <text class="msg-body">{{error}}</text>
+    <view class="evo-retry" hover-class="evo-pressed" bindtap="load">{{T.evoRetry}}</view>
+  </view>
+
+  <!-- 还没绑定电脑：说清楚这是什么、怎么绑定 -->
+  <view wx:elif="{{state === 'unbound'}}" class="panel">
+    <text class="evo-t">{{T.evoStartTitle}}</text>
+    <text class="evo-start-b">{{T.evoStartBody}}</text>
+    <view class="evo-step"><text class="evo-step-n">1</text><text class="evo-step-t">{{T.evoStep1}}</text></view>
+    <view class="evo-step"><text class="evo-step-n">2</text><text class="evo-step-t">{{T.evoStep2}}</text></view>
+    <view class="evo-cta" hover-class="evo-pressed" bindtap="onScan">{{T.evoScan}}</view>
+    <view class="note">{{T.evoGetEvo}} <text class="evo-site" user-select="{{true}}">evotracker.cn</text></view>
+  </view>
+
+  <block wx:else>
+    <picker wx:if="{{v.picker}}" range="{{v.picker.names}}" value="{{v.picker.index}}" bindchange="onAccount">
+      <view class="evo-account" hover-class="evo-pressed">
+        <text class="evo-k">{{T.evoAccount}}</text>
+        <text class="evo-account-v">{{v.picker.names[v.picker.index]}}</text>
+        <text class="evo-k">▾</text>
+      </view>
+    </picker>
+
+    <view wx:if="{{state === 'empty'}}" class="panel">
+      <text class="evo-t">{{T.evoBoundTitle}}</text>
+      <text class="evo-start-b">{{T.evoBoundBody}}</text>
+    </view>
+
+    <block wx:else>
+      <view wx:if="{{v.review}}" class="msg msg-warn evo-review" hover-class="evo-pressed" bindtap="onReview">
+        <text class="evo-grow">{{v.review}}</text>
+        <text class="evo-go">{{T.evoReviewGo}} →</text>
+      </view>
+
+      <!-- 段位 + 三个小数字：一眼回答"现在什么段、今天打得怎么样" -->
+      <view class="panel">
+        <block wx:if="{{v.all}}">
+          <text class="evo-k">{{T.evoRank}}</text>
+          <text class="evo-dim">{{T.evoRankAll}}</text>
+        </block>
+        <view wx:elif="{{v.rank}}" class="evo-rank">
+          <view wx:if="{{v.rank.hasEmblem}}" class="evo-emblem">
+            <image class="evo-emblem-img" src="{{v.rank.emblem}}" webp="{{true}}" mode="aspectFit"></image>
+            <text wx:if="{{v.rank.division}}" class="evo-numeral" style="left: {{v.rank.plateLeft}}%; top: {{v.rank.plateTop}}%; font-size: {{v.rank.plateFont}}rpx;">{{v.rank.division}}</text>
+          </view>
+          <view wx:else class="evo-letter">{{v.rank.letter}}</view>
+          <view class="evo-grow">
+            <text class="evo-k">{{T.evoRank}}</text>
+            <text class="evo-rank-name">{{v.rank.name}}</text>
+            <view wx:if="{{v.rank.progress}}" class="evo-rank-rp"><text class="evo-rank-n">{{v.rank.progress}}</text><text class="evo-unit">{{T.evoRpUnit}}</text></view>
+            <text wx:if="{{v.rank.asOf}}" class="evo-dim">{{v.rank.asOf}}</text>
+          </view>
+        </view>
+        <block wx:else>
+          <text class="evo-k">{{T.evoRank}}</text>
+          <text class="evo-dim">{{T.evoRankNone}}</text>
+        </block>
+        <view class="evo-minis">
+          <view class="evo-mini"><text class="evo-k">{{v.rangeRpLabel}}</text><text class="evo-mini-v evo-rp-{{v.rangeRpCls}}">{{v.rangeRp}}</text></view>
+          <view class="evo-mini"><text class="evo-k">{{T.evoTodayRp}}</text><text class="evo-mini-v evo-rp-{{v.todayRpCls}}">{{v.todayRp}}</text></view>
+          <view class="evo-mini"><text class="evo-k">{{T.evoTodayGames}}</text><text class="evo-mini-v">{{v.todayGames}}</text></view>
+        </view>
+      </view>
+
+      <!-- RP 走势：红线 + 淡红底，段位分界线是虚线（同 Evo 窗口） -->
+      <view class="sec-title">
+        {{T.evoChart}}
+        <view class="langsw evo-range">
+          <view class="langsw-i langsw-l {{range === '30' ? 'langsw-on' : ''}}" data-range="30" bindtap="onRange">{{T.evoRange30}}</view>
+          <view class="langsw-i langsw-r {{range === 'all' ? 'langsw-on' : ''}}" data-range="all" bindtap="onRange">{{T.evoRangeAll}}</view>
+        </view>
+      </view>
+      <view class="panel">
+        <text wx:if="{{v.all}}" class="evo-dim">{{T.evoChartAll}}</text>
+        <block wx:elif="{{v.chart}}">
+          <canvas type="2d" id="evo-chart" class="evo-chart"></canvas>
+          <view class="evo-chart-foot">
+            <text>{{v.chart.ago}}</text>
+            <text wx:if="{{v.chart.hasLines}}">{{T.evoChartLegend}}</text>
+            <text>{{T.evoChartLast}}</text>
+          </view>
+        </block>
+        <text wx:else class="evo-dim">{{T.evoChartNone}}</text>
+      </view>
+
+      <view class="evo-stats">
+        <view wx:for="{{v.stats}}" wx:key="key" class="evo-stat">
+          <text class="evo-k">{{item.label}}</text>
+          <text class="evo-stat-v {{item.accent ? 'evo-accent' : ''}}">{{item.value}}</text>
+        </view>
+      </view>
+
+      <!-- 最近 5 局 -->
+      <view class="sec-title">
+        {{T.evoRecent}}
+        <text class="sec-hint evo-link" bindtap="onAll">{{T.evoSeeAll}} →</text>
+      </view>
+      <view class="panel evo-list">
+        <view wx:for="{{v.recent}}" wx:key="id" class="evo-row {{index === v.recent.length - 1 ? 'evo-row-last' : ''}}" hover-class="evo-pressed" data-id="{{item.id}}" bindtap="onMatch">
+          <text class="evo-badge evo-{{item.badge}}">{{item.place}}</text>
+          <image wx:if="{{item.icon}}" class="evo-ic" src="{{item.icon}}" mode="aspectFill"></image>
+          <view wx:else class="evo-ic evo-ic-none"></view>
+          <view class="evo-row-main">
+            <view class="evo-row-t">
+              <text class="evo-clip {{item.unknown ? 'evo-muted' : ''}}">{{item.title}}</text>
+              <text wx:if="{{item.review}}" class="evo-tag">{{T.evoTagReview}}</text>
+            </view>
+            <text class="evo-k">{{item.sub}}</text>
+          </view>
+          <view class="evo-row-dmg"><text class="evo-row-n">{{item.damage}}</text><text class="evo-k">{{T.evoDamage}}</text></view>
+          <text class="evo-row-rp evo-rp-{{item.rpCls}}">{{item.rp}}</text>
+        </view>
+      </view>
+
+      <!-- 传奇表现：每个传奇的名次分布（颜色之外每段都有图例文字） -->
+      <block wx:if="{{v.legends}}">
+        <view class="sec-title">{{v.legendsTitle}}</view>
+        <view class="panel">
+          <view wx:for="{{v.legends}}" wx:key="key" class="evo-lg">
+            <view class="evo-lg-line">
+              <image wx:if="{{item.icon}}" class="evo-ic" src="{{item.icon}}" mode="aspectFill"></image>
+              <view wx:else class="evo-ic evo-ic-none"></view>
+              <text class="evo-lg-name {{item.other ? 'evo-muted' : ''}}">{{item.name}}</text>
+              <text class="evo-lg-meta">{{item.meta}}</text>
+            </view>
+            <view class="evo-bar">
+              <view wx:for="{{item.segments}}" wx:for-item="s" wx:key="css" class="evo-seg evo-seg-{{s.css}}" style="width: {{s.width}}%;"></view>
+            </view>
+          </view>
+          <view class="evo-keys">
+            <view class="evo-key"><view class="evo-dot evo-seg-p1"></view><text>{{T.evoP1}}</text></view>
+            <view class="evo-key"><view class="evo-dot evo-seg-p2"></view><text>{{T.evoP2}}</text></view>
+            <view class="evo-key"><view class="evo-dot evo-seg-p3"></view><text>{{T.evoP3}}</text></view>
+            <view class="evo-key"><view class="evo-dot evo-seg-p4"></view><text>{{T.evoP4}}</text></view>
+          </view>
+        </view>
+      </block>
+    </block>
+  </block>
+</view>

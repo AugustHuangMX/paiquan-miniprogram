@@ -1,0 +1,56 @@
+<view class="wrap theme-{{theme}}" data-lang="{{lang}}">
+  <view wx:if="{{state === 'loading'}}" class="panel evo-skel"></view>
+
+  <view wx:elif="{{state === 'error'}}" class="msg msg-err">
+    <text class="msg-title">{{T.evoLoadFail}}</text>
+    <text class="msg-body">{{error}}</text>
+  </view>
+
+  <view wx:elif="{{state === 'unbound'}}" class="panel">
+    <text class="evo-t">{{T.evoUnboundTitle}}</text>
+    <text class="evo-dim">{{T.evoUnboundBody}}</text>
+    <view class="evo-cta" hover-class="evo-pressed" bindtap="onBind">{{T.evoGoBind}}</view>
+  </view>
+
+  <block wx:else>
+    <!-- 筛选：模式；有待确认的局时多一个"只看待确认"；2 个以上账号时切换账号 -->
+    <view class="evo-filters">
+      <view class="tabs evo-modes">
+        <view class="tab {{mode === '' ? 'tab-on' : ''}}" data-mode="" bindtap="onMode">{{T.evoModeAll}}</view>
+        <view class="tab {{mode === 'ranked' ? 'tab-on' : ''}}" data-mode="ranked" bindtap="onMode">{{T.evoModeRanked}}</view>
+        <view class="tab {{mode === 'pubs' ? 'tab-on' : ''}}" data-mode="pubs" bindtap="onMode">{{T.evoModePubs}}</view>
+        <view wx:if="{{v.reviewCount || review}}" class="tab {{review ? 'tab-on' : ''}}" bindtap="onReview">{{T.evoOnlyReview}} {{v.reviewCount}}</view>
+      </view>
+      <picker wx:if="{{v.picker}}" range="{{v.picker.names}}" value="{{v.picker.index}}" bindchange="onAccount">
+        <view class="evo-account" hover-class="evo-pressed">
+          <text class="evo-k">{{T.evoAccount}}</text>
+          <text class="evo-account-v">{{v.picker.names[v.picker.index]}}</text>
+          <text class="evo-k">▾</text>
+        </view>
+      </picker>
+    </view>
+
+    <view wx:if="{{state === 'empty'}}" class="panel"><text class="evo-dim">{{emptyText}}</text></view>
+
+    <view wx:else class="panel evo-list">
+      <text class="evo-k">{{v.total}}{{review ? ' · ' + T.evoFixOnPc : ''}}</text>
+      <view wx:for="{{rows}}" wx:key="id" class="evo-row" hover-class="evo-pressed" data-id="{{item.id}}" bindtap="onMatch">
+        <text class="evo-badge evo-{{item.badge}}">{{item.place}}</text>
+        <image wx:if="{{item.icon}}" class="evo-ic" src="{{item.icon}}" mode="aspectFill"></image>
+        <view wx:else class="evo-ic evo-ic-none"></view>
+        <view class="evo-row-main">
+          <view class="evo-row-t">
+            <text class="evo-clip {{item.unknown ? 'evo-muted' : ''}}">{{item.title}}</text>
+            <text wx:if="{{item.review}}" class="evo-tag">{{T.evoTagReview}}</text>
+          </view>
+          <text class="evo-k">{{item.sub}} · {{item.kda}}</text>
+        </view>
+        <view class="evo-row-dmg"><text class="evo-row-n">{{item.damage}}</text><text class="evo-k">{{T.evoDamage}}</text></view>
+        <text class="evo-row-rp evo-rp-{{item.rpCls}}">{{item.rp}}</text>
+      </view>
+      <view wx:if="{{loadingMore}}" class="evo-foot">{{T.evoLoadingMore}}</view>
+      <view wx:elif="{{v.more}}" class="evo-foot evo-more" hover-class="evo-pressed" bindtap="onMore">{{T.evoLoadMore}}</view>
+      <view wx:else class="evo-foot">{{T.evoNoMore}}</view>
+    </view>
+  </block>
+</view>

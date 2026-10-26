@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "全部对局",
+  "navigationBarBackgroundColor": "#0a0c10",
+  "navigationBarTextStyle": "white",
+  "backgroundColor": "#0a0c10",
+  "backgroundTextStyle": "light",
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 200
+}

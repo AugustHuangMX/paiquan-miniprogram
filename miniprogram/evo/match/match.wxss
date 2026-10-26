@@ -1,0 +1,21 @@
+/* 单局详情。共用的（名次、头像、RP 颜色）在 evo/evo.wxss；数字格子用 app.wxss 的 .kv */
+@import "../evo.wxss";
+
+.evo-head-top { display: flex; align-items: center; }
+.evo-head-review { border-color: var(--warn); }
+.evo-badge-big { width: 96rpx; padding: var(--sp-2) 0; font-size: var(--fs-head); }
+.evo-ic-big { width: 72rpx; height: 72rpx; }
+.evo-head-t { display: block; font-size: var(--fs-head); font-weight: var(--fw-bold); }
+.evo-head-rp { flex: none; margin-left: var(--sp-4); text-align: right; }
+.evo-head-rpv { display: block; font-size: var(--fs-title); font-weight: var(--fw-num); font-variant-numeric: tabular-nums; }
+.evo-review-box { margin: var(--sp-5) 0 0; }
+
+.evo-facts { margin-top: 0; }
+
+.evo-mate { padding-bottom: var(--sp-5); margin-bottom: var(--sp-5); border-bottom: 1rpx solid var(--track); }
+.evo-mate-last { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
+.evo-mate-head { display: flex; align-items: center; margin-bottom: var(--sp-2); }
+.evo-mate-name { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); }
+.evo-mate-stats { display: flex; flex-wrap: wrap; margin-top: var(--sp-3); }
+.evo-mate-cell { width: 50%; margin-bottom: var(--sp-3); }
+.evo-mate-v { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }

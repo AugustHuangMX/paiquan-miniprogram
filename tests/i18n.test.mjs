@@ -293,14 +293,15 @@ describe("i18n · 动态文案", () => {
     try {
       i18n.applyChrome("en", "navMaps");
       const tabs = calls.filter((c) => c[0] === "tab");
-      assert.equal(tabs.length, 4, "四个 tab 都要改");
-      assert.deepEqual(tabs.map((t) => t[2]), ["Maps", "Ranked", "Esports", "Games"]);
+      // 2026-10-27：第 2 个 tab「排位专区」改叫「战绩」，加了第 5 个「我的」（Evo 绑定）
+      assert.equal(tabs.length, 5, "五个 tab 都要改");
+      assert.deepEqual(tabs.map((t) => t[2]), ["Maps", "Stats", "Esports", "Games", "Me"]);
       assert.deepEqual(calls.find((c) => c[0] === "nav"), ["nav", "Map rotation"]);
       assert.ok(!calls.some((c) => CJK.test(String(c[2] || c[1]))), "英文外壳里不许有中文");
 
       calls.length = 0;
       i18n.applyChrome("zh", "navMaps");
-      assert.deepEqual(calls.filter((c) => c[0] === "tab").map((t) => t[2]), ["地图", "排位专区", "比赛", "小游戏"]);
+      assert.deepEqual(calls.filter((c) => c[0] === "tab").map((t) => t[2]), ["地图", "战绩", "比赛", "小游戏", "我的"]);
     } finally {
       delete global.wx;
     }

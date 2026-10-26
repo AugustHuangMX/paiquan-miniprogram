@@ -1,0 +1,10 @@
+{
+  "name": "evo_pc",
+  "version": "1.0.0",
+  "description": "电脑上的 Evo 调用的云函数：绑定、上传战绩、解绑（见 AI-CONTEXT.md §17）",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~4.0.2"
+  }
+}

@@ -26,6 +26,23 @@
     </view>
   </view>
 
+  <!-- 2026-10-27 这一页从「排位专区」改成「战绩」：顶部切换两栏。
+       「我的战绩」是电脑上的 Evo 同步上来的个人战绩（分包 evo 里的组件，异步加载）；
+       「排位资讯」就是原来排位专区的全部内容，一点没动，只是包进了下面那个 view。
+       默认显示哪栏：绑定了 Evo 的人先看「我的战绩」，其他人照旧先看「排位资讯」（见 predator.js 的 onEvoStatus）。
+       两栏都用 hidden 而不是 wx:if：切换时不重新加载，「我的战绩」藏着的时候也照常读，好知道绑定了没有。 -->
+  <view class="segsw">
+    <view class="segsw-i {{seg === 'mine' ? 'segsw-on' : ''}}" data-seg="mine" bindtap="onSeg">{{T.segMine}}</view>
+    <view class="segsw-i {{seg === 'ranked' ? 'segsw-on' : ''}}" data-seg="ranked" bindtap="onSeg">{{T.segRanked}}</view>
+  </view>
+
+  <view hidden="{{seg !== 'mine'}}">
+    <evo-overview id="evo-ov" lang="{{lang}}" theme="{{theme}}" bind:status="onEvoStatus"></evo-overview>
+  </view>
+
+  <!-- ===== 「排位资讯」：原排位专区（为了 diff 好读，里面没有重新缩进） ===== -->
+  <view hidden="{{seg !== 'ranked'}}">
+
   <!-- 赛季（战斗通行证）倒计时。2026-10-16 从战绩页搬到**排位专区顶部**（用户要求）：
        这页是"排位"相关信息的家，赛季什么时候结束直接决定"还来不来得及上分"。
        数据来自云端配置，拿不到就整行不显示；只报到天 —— 数据源本身是天级精度，
@@ -380,4 +397,7 @@
     {{T.foot1}}
     {{T.foot2}}
   </view>
+
+  </view>
+  <!-- ===== 「排位资讯」到这里 ===== -->
 </view>

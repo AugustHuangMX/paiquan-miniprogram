@@ -1,0 +1,5 @@
+/* 全部对局。共用的（列表行、名次、账号切换）在 evo/evo.wxss */
+@import "../evo.wxss";
+
+.evo-filters { margin-bottom: var(--sp-2); }
+.evo-modes { margin-bottom: var(--sp-2); }

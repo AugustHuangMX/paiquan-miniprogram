@@ -1,7 +1,13 @@
 {
   "navigationStyle": "custom",
-  "navigationBarTitleText": "排位专区",
+  "navigationBarTitleText": "战绩",
   "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark",
-  "backgroundColor": "#f4f5f7"
+  "backgroundColor": "#f4f5f7",
+  "usingComponents": {
+    "evo-overview": "/evo/components/overview/index"
+  },
+  "componentPlaceholder": {
+    "evo-overview": "view"
+  }
 }

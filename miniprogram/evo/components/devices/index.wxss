@@ -1,0 +1,27 @@
+/* 「我的」里 Evo 那一块。共用的在 evo/evo.wxss */
+@import "../../evo.wxss";
+
+.evo-dev { display: flex; align-items: center; padding: var(--sp-4) 0; border-bottom: 1rpx solid var(--track); }
+.evo-dev-last { border-bottom: none; }
+.evo-dev-name { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); }
+/* 解绑：热区 ≥ 80rpx；用强调色文字 + 边框，不是实心红块（不是这一页的主操作） */
+.evo-unbind {
+  flex: none;
+  min-width: 128rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  margin-left: var(--sp-4);
+  text-align: center;
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-lg);
+  color: var(--accent-ink);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-bold);
+}
+.evo-acc { display: flex; align-items: baseline; justify-content: space-between; padding: var(--sp-2) 0; }
+.evo-acc-name { font-size: var(--fs-body); font-weight: var(--fw-bold); }
+
+.evo-about { margin-bottom: var(--sp-4); }
+.evo-about-t { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); }
+.evo-site-row { padding-top: var(--sp-4); border-top: 1rpx solid var(--track); }
+.evo-site { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--ink2); }

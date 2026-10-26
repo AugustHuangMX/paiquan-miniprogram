@@ -1,0 +1,30 @@
+<view class="wrap theme-{{theme}}" data-lang="{{lang}}">
+  <view class="panel">
+    <block wx:if="{{state === 'confirm' || state === 'binding'}}">
+      <text class="evo-t">{{T.evoBindTitle}}</text>
+      <text class="evo-dim">{{T.evoBindBody}}</text>
+      <text class="evo-code">{{T.evoBindCode}} {{code}}</text>
+      <view class="evo-cta {{state === 'binding' ? 'evo-busy' : ''}}" hover-class="evo-pressed" bindtap="onBind">{{state === 'binding' ? T.evoBinding : T.evoBind}}</view>
+      <view class="evo-btn2" hover-class="evo-pressed" bindtap="onCancel">{{T.evoCancel}}</view>
+    </block>
+
+    <block wx:elif="{{state === 'done'}}">
+      <text class="evo-t evo-ok">{{T.evoBindDone}}</text>
+      <text class="evo-dim">{{T.evoBindDoneBody}}</text>
+      <view class="evo-cta" hover-class="evo-pressed" bindtap="onGoStats">{{T.evoGoStats}}</view>
+    </block>
+
+    <block wx:elif="{{state === 'failed'}}">
+      <text class="evo-t">{{T.evoBindFail}}</text>
+      <text class="evo-dim">{{error}}</text>
+      <view class="evo-cta" hover-class="evo-pressed" bindtap="onRescan">{{T.evoRescan}}</view>
+      <view class="evo-btn2" hover-class="evo-pressed" bindtap="onCancel">{{T.evoCancel}}</view>
+    </block>
+
+    <block wx:else>
+      <text class="evo-t">{{T.evoNoCodeTitle}}</text>
+      <text class="evo-dim">{{T.evoNoCodeBody}}</text>
+      <view class="evo-cta" hover-class="evo-pressed" bindtap="onRescan">{{T.evoScanBtn}}</view>
+    </block>
+  </view>
+</view>
