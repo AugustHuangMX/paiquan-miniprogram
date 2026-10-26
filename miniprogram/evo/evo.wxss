@@ -93,6 +93,8 @@
 .evo-row-main { flex: 1; min-width: 0; }
 .evo-row-t { display: flex; align-items: center; }
 .evo-clip { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--fs-body); font-weight: var(--fw-bold); }
+/* 行里的副标题（模式 · 时间 · 击杀/助攻/击倒）：只占一行，放不下就省略，免得英文下折成两行把行撑高 */
+.evo-sub { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--fs-min); color: var(--ink3); }
 .evo-row-dmg { flex: none; margin-left: var(--sp-3); text-align: right; }
 .evo-row-n { display: block; font-size: var(--fs-body); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
 .evo-row-rp { flex: none; width: 112rpx; text-align: right; font-size: var(--fs-body); font-weight: var(--fw-num); font-variant-numeric: tabular-nums; }

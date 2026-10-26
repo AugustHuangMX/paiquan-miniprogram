@@ -115,7 +115,7 @@
               <text class="evo-clip {{item.unknown ? 'evo-muted' : ''}}">{{item.title}}</text>
               <text wx:if="{{item.review}}" class="evo-tag">{{T.evoTagReview}}</text>
             </view>
-            <text class="evo-k">{{item.sub}}</text>
+            <text class="evo-sub">{{item.sub}}</text>
           </view>
           <view class="evo-row-dmg"><text class="evo-row-n">{{item.damage}}</text><text class="evo-k">{{T.evoDamage}}</text></view>
           <text class="evo-row-rp evo-rp-{{item.rpCls}}">{{item.rp}}</text>
