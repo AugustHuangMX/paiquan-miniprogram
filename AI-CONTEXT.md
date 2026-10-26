@@ -139,12 +139,14 @@ pages/maps.wxml  {{...}}  ← 只渲染，不含业务判断
 | 页面 | 路径 | 数据来源 | 关键文件 | 备注 |
 |---|---|---|---|---|
 | 地图（tab） | `pages/maps/` | 云端 `rotation` + `schedule` | `viewmodel.js`、`prefs.js` | **旗舰页**；四行卡片 + 倒计时 + 设置面板 |
-| 排位专区（tab） | `pages/predator/` | 云端 `predator`/`config`/`rankdist`/`teams`/`player` + 离线 `prostats_data.js` | `rankdist.js`、`prostats.js`、`viewmodel.js` | 猎杀线 / 职业选手数据 / 段位分布 / 战队 / 战绩查询 |
+| 战绩（tab，原排位专区） | `pages/predator/` | 云端 `predator`/`config`/`rankdist`/`teams`/`player` + 离线 `prostats_data.js`；「我的战绩」走 `evo_mp` | `rankdist.js`、`prostats.js`、`viewmodel.js`、`evo/utils/view.js` | 顶部切换：我的战绩（Evo，§17）｜排位资讯（猎杀线 / 职业选手数据 / 段位分布 / 战队 / 战绩查询） |
 | 比赛（tab） | `pages/matches/` | **完全离线**：`algs_data.js` + `next_match_data.js` | `algs.js`、`nextmatch.js` | 不联网、不耗云函数配额 |
 | 小游戏（tab） | `pages/games/` | 本地 | `rings.js`、`ringpick.js`、`wheel_data.js` | 分类入口页（3 个入口卡片） |
 | 猜圈练习 | `pages/ringguessr/` | 本地 `match_rings_data.js` | `rings.js` | canvas 游戏：拖动 + 双指缩放，8 题 / 20 秒 |
 | 圈型速判 | `pages/ringpick/` | 本地 `rings_data.js` + `map_ends_data.js` | `ringpick.js` | 四选一，10 秒一题 |
 | 英雄/武器轮盘 | `pages/wheel/` | 本地 `codex_data.js` | `wheel_data.js` | 纯随机，不按选取率加权 |
+| 我的（tab） | `pages/me/` | 云端 `evo_mp` | 分包 `evo/components/devices` | Evo 的绑定（§17） |
+| 全部对局 / 对局详情 / 绑定电脑 | 分包 `evo/matches`、`evo/match`、`evo/bind` | 云端 `evo_mp` | `evo/utils/view.js` | Evo 战绩的子页面（§17） |
 
 **注意**：`pages/maps/` **没有自己的 `.wxss`**（只有 js/json/wxml），它的样式全部在根目录 `app.wxss` 里。
 其他 6 个页面各自有 `.wxss`。改地图页视觉 = 改 `app.wxss`（全局文件，会波及其他页面，小心）。
@@ -540,6 +542,55 @@ git update-index --no-skip-worktree project.config.json miniprogram/app.js
 | `T.xxx` | i18n 词典条目，`{{T.xxx}}` 在 WXML 里取 |
 | `.wrap` / `.wrap.theme-light` | 页面根容器；浅色主题挂在这个类上 |
 | Chrome | 原生的导航栏 / tabBar / 窗口底色（WXSS 管不到，走 `theme.js`） |
+
+---
+
+## 17. Evo 战绩（2026-10-27 起）
+
+**是什么**：Evo 是电脑上的 Apex 战绩记录器（只看屏幕画面、不碰游戏，开源，evotracker.cn）。
+绑定以后，电脑上记下的每一局同步到**本小程序的云环境**，在「战绩」页的「我的战绩」看。
+这补上了 §1「明确不做」里的"用户历史对局记录"（上游 API 拿不到，Evo 在电脑上自己记）。
+
+**放在哪**
+
+| 位置 | 内容 |
+|---|---|
+| 「战绩」tab（`pages/predator/`） | 顶部切换「我的战绩 ｜ 排位资讯」。排位资讯 = 原排位专区，**一点没改**，只是包进一个 `hidden` 的 view。绑定了 Evo 的人默认看「我的战绩」，其他人照旧先看排位资讯（`onEvoStatus`） |
+| 「我的」tab（`pages/me/`） | Evo 的绑定：电脑、解绑、账号 |
+| 分包 `miniprogram/evo/` | 其余全部：两个组件（主包页面异步引用）、三个子页面、段位徽章、`utils/view.js` |
+
+**为什么用分包**：主包 1.88 MB / 上限 2 MB。Evo 的东西放分包，主包只多了「我的」外壳、一个 tab 图标和词条（约 15 KB）。
+
+**数据流**
+
+```
+电脑上的 Evo ──HTTP API（匿名登录）──▶ 云函数 evo_pc ──▶ evo_devices / evo_matches / evo_lobby / evo_accounts
+                                                              ▲
+小程序（evo/ 分包）──callFunction──▶ 云函数 evo_mp ─────────┘  只读调用者自己（OPENID）绑定的电脑的数据
+云函数 evo_qrpool（定时）──▶ evo_qr_pool（带绑定码的小程序码，evo_pc 的 bind_code 领用）
+```
+
+- **绑定**：Evo 设置页点「绑定微信」→ `evo_pc.bind_code` 给绑定码（5 分钟、一次性）+ 小程序码（从码池领）→
+  用户用微信扫 → 打开 `evo/bind/bind?scene=绑定码` → 点「绑定」→ `evo_mp.bind`。
+  码池为什么要定时生成：生成小程序码要云调用，云调用只能从小程序里或**定时触发器**触发，电脑经 HTTP 调的云函数用不了。
+- **云函数只回数字和代号**（段位 `diamond`、RP 来源 `xp`、错误 `expired`…），中英文由 `evo/utils/view.js` 拼 ——
+  同本项目"判断/换算在 utils/ 纯函数里"的约定，也免得英文模式露出中文。
+- **统计**在 `evo_mp/stats.js`，和 Evo 电脑窗口同一套算法；四舍五入照 Python（正好一半取偶数），两边数字才对得上。
+- 传奇、地图名是 Evo 从游戏画面读的中文。英文模式：传奇名 / 头像按 id 从 `codex_data.js` 取（图鉴有 4 个中文名和游戏里不一样，所以按 id 对），地图名反查 `core.MAP_CN`；查不到保留原文。
+
+**隐私**：只存战绩数字、段位、队友的名字和 ID，不存截图。`evo_devices` 里存了绑定者的 openid（和追踪名单 `tracked_players` 一样，用来认"这是谁的数据"）。
+解绑时每次问要不要同时删云端数据。扫码用 `wx.scanCode`（不在隐私接口黑名单里）。
+
+**上线前要在云开发控制台做的事**（不做也不会影响别的功能，只是 Evo 那部分用不了）：
+
+1. 部署 `evo_pc`、`evo_mp`、`evo_qrpool`（「上传并部署：云端安装依赖」），`evo_qrpool` 再「上传触发器」
+2. 身份认证 → 打开**匿名登录**（电脑上的 Evo 用它领身份）
+3. 云函数权限：只放开 `evo_pc` 给匿名用户调用（**别**用 `"*"` 放开全部，否则 `apex` 也能被匿名调用、消耗 API Key 配额）
+4. `evo_qrpool` 的小程序码打开的版本：发布前 `develop`，正式发布后 `evo_pc` / `evo_qrpool` 两处的 `QR_ENV_VERSION` 一起改成 `release`
+
+集合不用手动建（第一次写入时自动建）。
+
+**测试**：`node tests/evo.test.mjs`（统计 + 界面字段）；`static.test.mjs` 的 WXML 绑定 / 样式类 / 标签闭合检查已覆盖 evo 的页面和组件。
 
 ---
 

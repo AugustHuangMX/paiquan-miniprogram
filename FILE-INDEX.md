@@ -31,7 +31,7 @@
 | 文件 | 行数 | 说明 |
 |---|---|---|
 | `app.js` | 38 | 只做一件事：`wx.cloud.init`，环境 ID 是常量 `CLOUD_ENV`。刻意不设 `traceUser`（不采集用户） |
-| `app.json` | 54 | 7 个页面 + 4 个 tabBar + `"cloud": true` + `lazyCodeLoading` |
+| `app.json` | 75 | 8 个主包页面 + 分包 `evo`（3 个页面）+ 5 个 tabBar + `"cloud": true` + `lazyCodeLoading` |
 | `app.wxss` | 1,117 | ⚠️ **全站设计系统**：顶部是主题令牌（`page{}` 深色 / `.wrap.theme-light` 浅色），下面还有**地图页的全部样式**（地图页自己没有 wxss）。49 KB，改动影响全站 |
 | `sitemap.json` | 9 | 搜索索引配置（`allow` 全部页面） |
 
@@ -40,12 +40,30 @@
 | 页面 | 数据来自 | 说明 |
 |---|---|---|
 | `pages/maps/` | 云端（`rotation`/`schedule`） | **旗舰页**。四行卡片（匹配/排位/外卡/轮换）+ 倒计时 + 设置面板（语言/主题/模式显隐/置顶）+ 广告位。⚠️ **无 wxss**（样式在 `app.wxss`） |
-| `pages/predator/` | 云端（`predator`/`config`/`rankdist`/`teams`/`player`）+ 离线 `prostats_data.js` | 猎杀分数线（含较昨日涨幅）、职业选手数据、段位分布、战队专区、战绩查询 |
+| `pages/predator/` | 云端（`predator`/`config`/`rankdist`/`teams`/`player`）+ 离线 `prostats_data.js`；「我的战绩」走云函数 `evo_mp` | **「战绩」tab**（2026-10-27 前叫排位专区）。顶部切换：「我的战绩」= 分包 evo 的 overview 组件（Evo 同步的个人战绩）；「排位资讯」= 原来的猎杀分数线、职业选手数据、段位分布、战队专区、战绩查询 |
 | `pages/matches/` | **纯离线**（`algs_data.js` + `next_match_data.js`） | 下一场比赛 + ALGS 赛场（赛事/选取率/组合/战队排名）。不联网 |
 | `pages/games/` | 本地 | 小游戏分类入口页（3 张入口卡） |
 | `pages/ringguessr/` | 本地 `match_rings_data.js` | 猜圈练习：canvas、拖动 + 双指缩放、8 题 20 秒 |
 | `pages/ringpick/` | 本地 `rings_data.js` + `map_ends_data.js` | 圈型速判：四选一、10 秒一题 |
 | `pages/wheel/` | 本地 `codex_data.js` | 英雄 / 武器轮盘（canvas 扇形） |
+| `pages/me/` | 云函数 `evo_mp` | **「我的」tab**（2026-10-27）：外壳页（导航栏 + ⚙），内容是分包 evo 的 devices 组件（绑定的电脑、扫码绑定、解绑、游戏账号）。没有 wxss |
+
+### `miniprogram/evo/` —— 分包：Evo 战绩（2026-10-27，见 AI-CONTEXT §17）
+
+主包只剩约 120 KB 余量，Evo 的页面、组件、段位徽章都放这个分包；主包的两个 tab 页**异步引用**这里的组件（页面 json 的 `componentPlaceholder`）。
+
+| 文件 | 说明 |
+|---|---|
+| `utils/view.js` | ✅ 纯函数：云函数 `evo_mp` 回的数字和代号 → 界面字段，中英文都在这里拼（`tests/evo.test.mjs`） |
+| `utils/cloud.js` | 调 `evo_mp`（永远 resolve）+ 扫码绑定 `scanToBind` |
+| `utils/state.js` | 几个页面共用的内存状态（选中的账号、绑定后要重读），**不写本地存储** |
+| `evo.wxss` | 共用样式（列表行、名次、按钮、账号切换），各页面 / 组件 `@import` |
+| `components/overview/` | 「我的战绩」：段位、RP 走势（canvas）、统计数字、最近 5 局、传奇表现 |
+| `components/devices/` | 「我的」里的 Evo：电脑列表、解绑（每次问要不要删云端数据）、账号、说明 |
+| `matches/` | 全部对局（筛选模式 / 只看待确认 / 切账号，每页 20 局） |
+| `match/` | 单局详情（这一局的数字 + 两名队友） |
+| `bind/` | 绑定确认（扫码后打开；小程序码的 scene 或 Evo 二维码的 c 是绑定码） |
+| `assets/ranks/*.webp` | 段位徽章（7 张，104 KB；EA 的游戏素材，同 `assets/heroes/`） |
 
 > 页面 js 里**只该有**：`onLoad/onShow`、`cloud.callCloud`、`setData`。
 > 任何判断/换算逻辑都应该在 `utils/` 的纯函数里（否则没法测）。
@@ -117,6 +135,17 @@
 | `curated_roster.json` | 4.6 KB | 战队名单（人工维护） |
 | `curated_roster_resolved.json` | 2.8 KB | 解析后的名单（uid 已补全） |
 
+## `cloudfunctions/evo_*` —— Evo 战绩的三个云函数（2026-10-27，见 AI-CONTEXT §17）
+
+和 `apex` 分开：依赖 `wx-server-sdk ~4.0.2`，写法是现代 JS（async/await）。`apex` 的 ES5 规矩和 `sync.test.mjs` 只管 `apex`。
+
+| 文件 | 说明 |
+|---|---|
+| `evo_pc/index.js` | 电脑上的 Evo 调（HTTP API + 匿名登录）：`hello` / `bind_code` / `upload` / `unbind` |
+| `evo_mp/index.js` | 小程序调（按 OPENID 只看自己的）：`status` / `bind` / `me` / `unbind` / `overview` / `matches` / `match` |
+| `evo_mp/stats.js` | ✅ 纯函数：统计（和 Evo 电脑窗口同一套算法，`tests/evo.test.mjs`） |
+| `evo_qrpool/` | 定时触发（每 5 分钟）：预先生成带绑定码的小程序码，存进 `evo_qr_pool` |
+
 ---
 
 ## `tests/` —— 30 个测试文件（`node:test`，零依赖）
@@ -153,6 +182,7 @@
 | `rings-render.test.mjs` | 6 | 猜圈渲染字段 |
 | `wheel.test.mjs` | 15 | 轮盘 |
 | `ringpick.test.mjs` | 14 | 速判几何 |
+| `evo.test.mjs` | — | Evo 战绩：统计（四舍五入同 Python）、中英文字段、传奇 / 地图 / 段位译名、徽章文件 |
 | `live.mjs` | — | **联机脚本**（真 Key 打真接口），不算测试 |
 
 ---
