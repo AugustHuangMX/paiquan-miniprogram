@@ -1,0 +1,10 @@
+# 统一换行：仓库里存 LF，检出时按平台转换（Windows 得到 CRLF，macOS/Linux 得到 LF）
+# 这样两台机器上「两份 core.js 字节一致」始终成立，也不会因为换行把整份文件标成改动
+* text=auto
+
+# 二进制，别做任何转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.mp4 binary
+*.zip binary

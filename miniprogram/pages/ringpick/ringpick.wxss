@@ -1,0 +1,166 @@
+/* 圈型速判（四选一）。
+   数值全部走 app.wxss 的令牌层（字号 7 档 / --sp-* 间距 / --r-* 圆角 / 颜色只用 var()）。
+
+   一屏预算（子页可用约 1448rpx）：
+     边距 32 + 计分条 78 + 时间条 14 + 题干 44 + 地图 686 + 结果 56 + 按钮 96 + 规则 54 ≈ 1060。
+
+   几条不能动的：
+     1. **候选点热区 96rpx**（下限 80rpx）。四个点的间距是 utils/ringpick.js 按 70° 算的，
+        屏幕上最少约 96rpx，所以热区不会互相压住。
+     2. 白圈 6rpx、红圈 4rpx：地图有雪地/沙漠这种亮地形，纯色圈会糊，所以白圈套一圈半透明黑边。
+     3. 对错**不只靠颜色**：字母本身就是语义，结果条还会写"正确点是 C"。 */
+
+.wrap { padding-bottom: var(--sp-4); }
+
+/* ---------- 计分条 ---------- */
+.qbar { display: flex; align-items: flex-end; margin: var(--sp-2) 0 var(--sp-2); }
+.qbar-i { margin-right: var(--sp-6); }
+.qbar-wide { margin-right: 0; margin-left: auto; text-align: right; }
+.qbar-k { display: block; font-size: var(--fs-min); color: var(--ink3); line-height: 1.5; }
+.qbar-v {
+  display: block;
+  font-size: var(--fs-head);
+  font-weight: var(--fw-num);
+  color: var(--ink);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.qbar-m { display: block; font-size: var(--fs-sub); font-weight: var(--fw-bold); color: var(--ink2); line-height: 1.4; }
+
+/* ---------- 10 秒进度条 ---------- */
+.qtimer {
+  height: 6rpx;
+  border-radius: var(--r-full);
+  background: var(--track);
+  overflow: hidden;
+  margin-bottom: var(--sp-2);
+}
+.qtimer-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--accent-ink);
+  transition: width 100ms linear;
+}
+
+/* ---------- 题干（在地图外，避免挡住贴边的候选点） ---------- */
+.qask { display: flex; align-items: baseline; margin-bottom: var(--sp-2); }
+.qask-t { flex: 1 1 auto; min-width: 0; font-size: var(--fs-sub); color: var(--ink); line-height: 1.5; }
+.qask-s {
+  flex: 0 0 auto;
+  margin-left: var(--sp-3);
+  font-size: var(--fs-min);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 地图 ---------- */
+/* ⚠️ 宽高必须是 686rpx：utils/ringpick.js 用这个数把地图坐标换算成屏幕百分比（BOX）。
+   改这里就要同步改那边，否则圈和点会整体偏移。 */
+.qmap {
+  position: relative;
+  width: 686rpx;
+  height: 686rpx;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--sunken);
+}
+/* 底图按 view() 算出来的倍数放大 + 平移（style 里是 transform，这里是基准尺寸） */
+.qmap-img { width: 686rpx; height: 686rpx; }
+
+/* 第一个圈：白圈 + 半透明黑描边（雪地上也看得清） */
+.qring {
+  position: absolute;
+  box-sizing: border-box;
+  border: 6rpx solid #ffffff;
+  border-radius: var(--r-full);
+  box-shadow: 0 0 0 2rpx rgba(0, 0, 0, 0.55);
+}
+/* 真实的下一个圈：红圈，与白圈内切 */
+.qanswer {
+  position: absolute;
+  box-sizing: border-box;
+  border: 4rpx solid var(--accent-ink);
+  border-radius: var(--r-full);
+}
+
+/* ---------- 四个候选圈心 ----------
+   外层是 96rpx 的透明热区，内层 56rpx 才是看得见的字母按钮。 */
+.qopt {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96rpx;
+  height: 96rpx;
+  margin: -48rpx 0 0 -48rpx;
+}
+.qopt-t {
+  width: 56rpx;
+  height: 56rpx;
+  line-height: 52rpx;
+  box-sizing: border-box;
+  text-align: center;
+  border-radius: var(--r-full);
+  background: var(--card);
+  border: 2rpx solid var(--accent-ink);
+  color: var(--ink);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-bold);
+}
+/* 答完：对的绿、错的红。描边宽度不跟着变（会跳一下），用同色外发光加粗 */
+.qp-hit .qopt-t {
+  border-color: var(--up);
+  color: var(--up);
+  box-shadow: 0 0 0 2rpx var(--up);
+}
+.qp-miss .qopt-t {
+  border-color: var(--down);
+  color: var(--down);
+  box-shadow: 0 0 0 2rpx var(--down);
+}
+
+/* ---------- 结果 / 下一步 ---------- */
+.qfoot { margin-top: var(--sp-3); }
+.qres {
+  display: flex;
+  align-items: baseline;
+  padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+}
+.qres-ok { border-color: var(--up); }
+.qres-no { border-color: var(--warn); }
+.qres-t {
+  flex: 0 0 auto;
+  margin-right: var(--sp-3);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+}
+.qres-m { flex: 1 1 auto; min-width: 0; font-size: var(--fs-min); color: var(--ink2); line-height: 1.5; }
+
+/* 一局结束的汇总：写清"答对几个 / 多少分"，别只留一个分数 */
+.qsm {
+  margin-bottom: var(--sp-2);
+  text-align: center;
+  font-size: var(--fs-sub);
+  color: var(--ink2);
+  line-height: 1.6;
+}
+
+/* 主按钮：全宽 96rpx，拇指落点（远高于 80rpx 热区下限） */
+.qbig {
+  height: 96rpx;
+  line-height: 96rpx;
+  text-align: center;
+  border-radius: var(--r-lg);
+  background: var(--raised);
+  border: 1rpx solid var(--line);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+}
+.qbig-on { background: var(--accent); border-color: var(--accent); color: #ffffff; }

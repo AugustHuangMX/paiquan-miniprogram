@@ -1,0 +1,182 @@
+/**
+ * 云函数入口。
+ *
+ * 依赖只有一个：wx-server-sdk，而且**只用来存「每小时一条」的猎杀底分快照**，
+ * 好算「较昨日同期涨了多少」。上游没有历史接口（实测 /predator/history 返回的就是当前值），
+ * 所以这个涨幅只能自己记。
+ *
+ * 包在 try/catch 里是有意的：万一依赖没装上（比如上传时没选「云端安装依赖」），
+ * 这个函数仍然能正常查分数线，只是没有涨幅这个附加信息 ——
+ * **不能因为一个附加功能，让整个小程序挂掉。**
+ *
+ * API Key 从云函数的环境变量读，不写在代码里、也不下发到小程序端。
+ * 在「云开发控制台 → 云函数 → apex → 配置 → 环境变量」里加一条：
+ *     ALS_API_KEY = 你的 Apex Legends Status API Key
+ */
+const { handle } = require("./handler");
+
+let snapshots = null;
+let playerStore = null;
+let rotationLog = null;
+let getOpenid = null;
+try {
+  const cloud = require("wx-server-sdk");
+  cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
+  snapshots = require("./store").createStore(cloud);
+  playerStore = require("./playerStore").createPlayerStore(cloud);
+  // 轮换记录器：给"接下来两天几点打哪张图"的表供数（玩法那部分不用记，可以外推）
+  rotationLog = require("./rotationLog").createLog(cloud);
+  // 追踪按 openid 隔离（每人最多 5 个）。定时触发器触发的轮询没有用户上下文，openid 为空即可。
+  getOpenid = function () {
+    try {
+      const ctx = cloud.getWXContext();
+      return ctx && ctx.OPENID ? ctx.OPENID : "";
+    } catch (e) { return ""; }
+  };
+} catch (e) {
+  console.warn("存储没初始化成功，追踪/涨幅功能会缺失：" + (e && e.message ? e.message : String(e)));
+}
+
+exports.main = async (event) => {
+  const apiKey = (process.env.ALS_API_KEY || "").trim();
+
+  // 定时触发器：只做轮询，不走 handle（那是给前端按需调用走的路）
+  if (event && event.Type === "Timer") {
+    try {
+      const { poll } = require("./trackerPoll");
+      const result = await poll({ apiKey: apiKey, playerStore: playerStore });
+
+      // 顺手记一条轮换。
+      // 上游只给"当前 + 下一个"，所以时间表只能靠这样一场一场攒；
+      // 定时器每 5 分钟跑一次、轮换 15 分钟一场 → 每场 3 次冗余，不会漏。
+      let logged = 0;
+      if (rotationLog) {
+        try {
+          const nowSec = Math.floor(Date.now() / 1000);
+          const rot = await handle({ action: "rotation" }, { apiKey: apiKey });
+          const modes = (rot && rot.data && rot.data.modes) || [];
+          const entries = [];
+          modes.forEach(function (m) {
+            if (!m || !m.def) return;
+            if (m.current) {
+              entries.push({
+                mode: m.def.id, map: m.current.map, event: m.current.eventName || "",
+                start: m.current.start, end: m.current.end
+              });
+            }
+            (m.nexts || []).forEach(function (n) {
+              entries.push({
+                mode: m.def.id, map: n.map, event: n.eventName || "",
+                start: n.start, end: n.end
+              });
+            });
+          });
+          logged = await rotationLog.record(entries, nowSec);
+          await rotationLog.prune(nowSec);
+        } catch (e) {
+          // 记录失败不能影响轮询本身
+          console.warn("轮换记录失败：" + (e && e.message ? e.message : String(e)));
+        }
+      }
+
+      return { ok: true, kind: "ok", message: "poll done", data: Object.assign({}, result, { rotationLogged: logged }) };
+    } catch (e) {
+      return { ok: false, kind: "internal", message: "轮询失败：" + (e && e.message ? e.message : String(e)) };
+    }
+  }
+
+  // 轮换时间表：返回后台攒下来的场次（记录动作在定时触发器里做）。
+  // 拿不到就给空数组 —— 前端会把地图列显示成「待记录」，绝不编。
+  if (event && event.action === "schedule") {
+    try {
+      if (!rotationLog) return { ok: true, kind: "ok", message: "", data: { entries: [] } };
+      const nowSec = Math.floor(Date.now() / 1000);
+      const entries = await rotationLog.readRange(nowSec - 3600, nowSec + 2 * 24 * 3600);
+      return { ok: true, kind: "ok", message: "", data: { entries: entries } };
+    } catch (e) {
+      return { ok: false, kind: "internal", message: "轮换时间表读取失败：" + (e && e.message ? e.message : String(e)) };
+    }
+  }
+
+  // 站点配置：赛季结束时间 + 活动列表 + 赛程列表。
+  //
+  // 优先读 site_config 集合 —— 这样你可以在云开发控制台的「数据库」里直接改，
+  // 不用改代码、不用重新提审（赛季一换就得发版是很糟糕的设计）。
+  // 集合不存在（第一次用就是这样）或读失败时**静默退回内置兜底值**，
+  // 绝不把错误抛给用户 —— 页面上少一行倒计时，比弹一个报错好得多。
+  //
+  // SEASON_FALLBACK = 2026-11-04 01:00 (UTC+8)，按游戏内"通行证剩余 21d6h"推的。
+  // 小时级，所以误差在 ±1 小时内；换赛季去控制台改 site_config 即可。
+  if (event && event.action === "config") {
+    const SEASON_FALLBACK = 1793725200;
+    const cfg = { season: SEASON_FALLBACK, events: [], matches: [] };
+    try {
+      const res = await cloud.database().collection("site_config").limit(20).get();
+      (res.data || []).forEach(function (doc) {
+        if (doc._id === "season" && doc.endTs) cfg.season = Number(doc.endTs) || SEASON_FALLBACK;
+        if (doc._id === "events" && Array.isArray(doc.list)) cfg.events = doc.list;
+        if (doc._id === "matches" && Array.isArray(doc.list)) cfg.matches = doc.list;
+      });
+    } catch (e) {
+      // 集合还没建：保持兜底值，什么都不说
+    }
+    return { ok: true, kind: "ok", message: "", data: cfg };
+  }
+
+  // 职业热门组合：走 ALGS 赛事页抓取（API 里没有赛事数据），也放独立模块
+  if (event && event.action === "comps") {
+    try {
+      const { handle: compsHandle } = require("./comps");
+      return await compsHandle(event, {});
+    } catch (e) {
+      return { ok: false, kind: "internal", message: "职业组合数据错误：" + (e && e.message ? e.message : String(e)) };
+    }
+  }
+
+  // 英雄选取率：走网页抓取（API 里没有这个数据），也放独立模块
+  if (event && event.action === "pickrates") {
+    try {
+      const { handle: pickHandle } = require("./pickrates");
+      return await pickHandle(event, {});
+    } catch (e) {
+      return { ok: false, kind: "internal", message: "选取率数据错误：" + (e && e.message ? e.message : String(e)) };
+    }
+  }
+
+  // 段位分布：上游有一个**没被人机校验挡的 JSON 接口**，所以这一块是实时的，
+  // 不用像 ALGS 那样做离线快照（见 rankdist.js 顶部说明）。
+  if (event && event.action === "rankdist") {
+    try {
+      const { handle: rankHandle } = require("./rankdist");
+      return await rankHandle(event, {});
+    } catch (e) {
+      return { ok: false, kind: "internal", message: "段位分布数据错误：" + (e && e.message ? e.message : String(e)) };
+    }
+  }
+
+  // 战队专区：读本地名单 + 查分数，走独立模块（不塞进共享的 handler.js）
+  if (event && event.action === "teams") {
+    try {
+      const { handle: teamsHandle } = require("./teams");
+      return await teamsHandle(event, { apiKey: apiKey });
+    } catch (e) {
+      return { ok: false, kind: "internal", message: "战队数据错误：" + (e && e.message ? e.message : String(e)) };
+    }
+  }
+
+  try {
+    return await handle(event, {
+      apiKey: apiKey,
+      snapshots: snapshots,
+      playerStore: playerStore,
+      openid: getOpenid ? getOpenid() : "",
+    });
+  } catch (e) {
+    // 兜底：绝不让云函数把异常直接抛给小程序，否则前端只能看到一句无意义的报错
+    return {
+      ok: false,
+      kind: "internal",
+      message: "云函数内部错误：" + (e && e.message ? e.message : String(e)),
+    };
+  }
+};

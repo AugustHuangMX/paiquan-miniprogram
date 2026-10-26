@@ -1,0 +1,54 @@
+{
+  "pages": [
+    "pages/maps/maps",
+    "pages/predator/predator",
+    "pages/matches/matches",
+    "pages/games/games",
+    "pages/ringguessr/ringguessr",
+    "pages/ringpick/ringpick",
+    "pages/wheel/wheel"
+  ],
+  "window": {
+    "navigationBarTitleText": "英雄地图轮换助手",
+    "navigationBarBackgroundColor": "#f5f6f8",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f5f6f8",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#5f6a79",
+    "selectedColor": "#c62828",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/maps/maps",
+        "text": "地图",
+        "iconPath": "assets/tab-maps.png",
+        "selectedIconPath": "assets/tab-maps-on.png"
+      },
+      {
+        "pagePath": "pages/predator/predator",
+        "text": "排位专区",
+        "iconPath": "assets/tab-predator.png",
+        "selectedIconPath": "assets/tab-predator-on.png"
+      },
+      {
+        "pagePath": "pages/matches/matches",
+        "text": "比赛",
+        "iconPath": "assets/tab-matches.png",
+        "selectedIconPath": "assets/tab-matches-on.png"
+      },
+      {
+        "pagePath": "pages/games/games",
+        "text": "小游戏",
+        "iconPath": "assets/tab-games.png",
+        "selectedIconPath": "assets/tab-games-on.png"
+      }
+    ]
+  },
+  "cloud": true,
+  "sitemapLocation": "sitemap.json",
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents"
+}

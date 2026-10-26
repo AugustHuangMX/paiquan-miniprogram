@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>图标渲染</title>
+<style>
+  body{margin:0;background:#1a1d23;color:#c9ced8;font-family:system-ui,"Microsoft YaHei",sans-serif;padding:28px}
+  h2{font-size:14px;font-weight:600;margin:0 0 10px;color:#8f97a5;letter-spacing:.5px}
+  .row{display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap;margin-bottom:26px}
+  .item{text-align:center}
+  .item .lab{font-size:11px;color:#6f7787;margin-top:7px}
+  .circle{border-radius:50%;overflow:hidden;display:block}
+  .sq{border-radius:12px;overflow:hidden;display:block}
+  svg{display:block}
+  button{background:#e0353a;color:#fff;border:0;border-radius:9px;padding:10px 18px;font-size:13px;cursor:pointer;font-weight:600}
+  pre{background:#12151a;border:1px solid #262c36;border-radius:9px;padding:12px;font-size:12px;color:#9aa3b2;white-space:pre-wrap}
+</style>
+</head>
+<body>
+
+<h2>图标预览（左边是微信可能用的圆形裁切，右边是方形）</h2>
+<div class="row">
+  <div class="item"><span class="circle" id="p512c"></span><div class="lab">512 · 圆形裁切</div></div>
+  <div class="item"><span class="sq" id="p512s"></span><div class="lab">512 · 方形</div></div>
+  <div class="item"><span class="circle" id="p144"></span><div class="lab">144 · 圆形</div></div>
+  <div class="item"><span class="circle" id="p96"></span><div class="lab">96 · 圆形</div></div>
+  <div class="item"><span class="circle" id="p48"></span><div class="lab">48 · 小尺寸可读性</div></div>
+</div>
+
+<div class="row">
+  <button id="btn">导出 PNG（512 / 256 / 144 / 96）到 assets 目录</button>
+</div>
+<pre id="log">等待导出…</pre>
+
+<!-- ============ 图标本体（唯一改动的地方） ============ -->
+<svg id="icon" xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="34%" r="76%">
+      <stop offset="0%" stop-color="#2a1519"/>
+      <stop offset="52%" stop-color="#15181e"/>
+      <stop offset="100%" stop-color="#0a0c10"/>
+    </radialGradient>
+    <linearGradient id="mk" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#ff5257"/>
+      <stop offset="55%" stop-color="#e0353a"/>
+      <stop offset="100%" stop-color="#b7232a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景：整块铺满，圆形裁切也不露边 -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- 轮换意象：顶部一段弧 + 顺时针箭头（箭头按弧末端切线方向算，否则会歪） -->
+  <path d="M 92 196 A 175 175 0 0 1 420 196"
+        fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="17" stroke-linecap="round"/>
+  <path d="M 428.9 220.4 L 403.8 195.5 L 432.0 185.3 Z" fill="#ffffff" fill-opacity="0.5"/>
+
+  <!-- 主体：锐角 A -->
+  <path d="M 256 132 L 382 384 L 292 384 L 256 252 L 220 384 L 130 384 Z" fill="url(#mk)"/>
+</svg>
+<!-- ===================================================== -->
+
+<script>
+const SIZES = [512, 256, 144, 96];
+const icon = document.getElementById("icon");
+
+function svgString() {
+  const clone = icon.cloneNode(true);
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.setAttribute("width", "512");
+  clone.setAttribute("height", "512");
+  return new XMLSerializer().serializeToString(clone);
+}
+
+function render(size) {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([svgString()], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = c.height = size;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/png"));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("SVG 渲染失败")); };
+    img.src = url;
+  });
+}
+
+(async function preview() {
+  for (const [id, size] of [["p512c", 512], ["p512s", 512], ["p144", 144], ["p96", 96], ["p48", 48]]) {
+    const url = await render(size);
+    const holder = document.getElementById(id);
+    const im = new Image();
+    im.src = url;
+    im.width = Math.min(size, 190);
+    im.height = Math.min(size, 190);
+    holder.appendChild(im);
+  }
+  document.getElementById("log").textContent = "预览已生成。点上面的按钮导出。";
+})();
+
+document.getElementById("btn").addEventListener("click", async () => {
+  const log = document.getElementById("log");
+  log.textContent = "";
+  for (const size of SIZES) {
+    const dataURL = await render(size);
+    const r = await fetch("/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "icon-" + size + ".png", dataURL }),
+    });
+    const j = await r.json();
+    log.textContent += (j.ok ? "✓ " : "✗ ") + "icon-" + size + ".png  " + j.bytes + " 字节\n";
+  }
+  // 同时存一份 svg 源文件，方便以后改
+  const r = await fetch("/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "icon.svg", text: svgString() }),
+  });
+  const j = await r.json();
+  log.textContent += (j.ok ? "✓ " : "✗ ") + "icon.svg  " + j.bytes + " 字节";
+});
+</script>
+</body>
+</html>

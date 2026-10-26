@@ -1,0 +1,89 @@
+{
+  "_note": "中国 Apex 职业战队名单草稿。IGN 尚未解析成 uid；部分 ALGS 报名名 ≠ 游戏内名，解析时需逐个核对。数据时间点 = ALGS 2026 Split 2 常规赛（08-21~09-13）。来源：Liquipedia(api.php wikitext) + 17173 + vgover。2026 年 CN 队属 APAC South（不是 North）。",
+  "season": "2026 Split 2",
+  "region": "APAC South",
+  "source_urls": [
+    "https://liquipedia.net/apexlegends/Apex_Legends_Global_Series/2026/Split_2/Pro_League/APAC_South",
+    "https://liquipedia.net/apexlegends/EDward_Gaming",
+    "https://news.17173.com/content/02282026/151658781.shtml",
+    "https://www.vgover.com/news/229199"
+  ],
+  "teams": [
+    { "id": "VKG", "name": "VKG", "players": [
+      { "ign": "Kasssa", "aka": "Kassa", "input": "KBM", "nation": "中国大陆" },
+      { "ign": "JR", "aka": "JonnyR", "input": "KBM", "nation": "中国大陆" },
+      { "ign": "Noname", "input": "KBM", "nation": "中国大陆" },
+      { "ign": "LqDuD", "sub": true }
+    ]},
+    { "id": "Wolves", "name": "狼队", "players": [
+      { "ign": "WenXx", "aka": "Donut", "input": "KBM", "nation": "中国大陆" },
+      { "ign": "CrazyCong", "nation": "中国大陆" },
+      { "ign": "QQ", "nation": "中国台湾" }
+    ]},
+    { "id": "PXX", "name": "PXX（前 XNY）", "players": [
+      { "ign": "xd", "nation": "中国大陆" },
+      { "ign": "Pite", "input": "KBM", "nation": "中国大陆" },
+      { "ign": "Xzz", "nation": "中国大陆" }
+    ]},
+    { "id": "DCG", "name": "DCG", "players": [
+      { "ign": "ShaoJie", "nation": "中国台湾" },
+      { "ign": "Roieee", "input": "KBM", "nation": "中国台湾" },
+      { "ign": "Lu1SaN", "nation": "中国台湾" }
+    ]},
+    { "id": "BlackHole", "name": "Black Hole", "players": [
+      { "ign": "XX", "nation": "中国大陆" },
+      { "ign": "Eastyy", "nation": "中国大陆" },
+      { "ign": "BJJS_012", "input": "controller", "nation": "中国台湾" }
+    ]},
+    { "id": "saweiqi", "name": "saweiqi（前 MDY Black→EDG）", "players": [
+      { "ign": "Bieyun", "nation": "中国大陆" },
+      { "ign": "refra1nnn", "input": "KBM", "nation": "中国香港" },
+      { "ign": "GuoZi", "input": "KBM", "nation": "中国大陆" }
+    ]},
+    { "id": "TEC", "name": "TEC", "players": [
+      { "ign": "ckkongbai", "nation": "中国大陆" },
+      { "ign": "xiaolin", "input": "controller", "nation": "中国台湾" },
+      { "ign": "BoLin", "nation": "中国台湾" }
+    ]},
+    { "id": "TECAcademy", "name": "TEC Academy（前 QWQ）", "players": [
+      { "ign": "Menino", "input": "KBM", "nation": "中国大陆" },
+      { "ign": "Allmyfaul", "nation": "中国大陆" },
+      { "ign": "qiuzi", "aka": "Akikov0", "input": "controller", "nation": "中国大陆" },
+      { "ign": "Wuzi", "sub": true, "input": "KBM", "nation": "中国大陆" }
+    ]},
+    { "id": "2C1M", "name": "2C1M", "players": [
+      { "ign": "Ggod", "input": "controller", "nation": "中国大陆" },
+      { "ign": "FengchunOvO", "input": "controller", "nation": "中国大陆" },
+      { "ign": "YY", "nation": "中国大陆" }
+    ]},
+    { "id": "Kirisame", "name": "Kirisame（混合华裔）", "players": [
+      { "ign": "xKenN", "nation": "马来西亚" },
+      { "ign": "XoyoBda", "nation": "马来西亚" },
+      { "ign": "Cumulonimbus", "aka": "Return / 小惹 / 赵朗月", "nation": "中国大陆" }
+    ]},
+    { "id": "TuBoShu", "name": "TuBoShu（香港队）", "players": [
+      { "ign": "KingMSG", "input": "KBM", "nation": "中国香港" },
+      { "ign": "Rchwert", "input": "controller" },
+      { "ign": "Tu1rbo", "input": "controller" },
+      { "ign": "g8", "sub": true }
+    ]},
+    { "id": "Orange", "name": "Orange", "players": [
+      { "ign": "N1ng", "input": "controller", "nation": "中国台湾" },
+      { "ign": "跳跳loveJK" },
+      { "ign": "Jacky1", "nation": "中国大陆" }
+    ]},
+    { "id": "ARAM", "name": "ARAM（台湾队）", "players": [
+      { "ign": "Chisu", "input": "KBM", "nation": "中国台湾" },
+      { "ign": "Normal", "nation": "中国台湾" },
+      { "ign": "SongYou", "nation": "中国台湾" },
+      { "ign": "yoafter", "sub": true, "nation": "中国台湾" }
+    ]},
+    { "id": "GoaT", "name": "GoaT（前 DF / WBG）", "players": [
+      { "ign": "OWO", "nation": "中国台湾" },
+      { "ign": "AceGod", "aka": "Hinson", "nation": "中国香港" },
+      { "ign": "thurston", "nation": "中国香港" },
+      { "ign": "Caigou", "sub": true, "input": "controller", "nation": "中国大陆" }
+    ]}
+  ],
+  "_exited": "4AM / LGD / OMG / Tyloo 2026 已退出 Apex；EDG 7-31 退出；WBG 仅 Split 1；DreamFire 8-31 更名 GoaT；XNY→PXX；QWQ→TEC Academy；3Mz 8-31 离队去向不明。"
+}

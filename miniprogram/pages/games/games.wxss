@@ -1,0 +1,173 @@
+/* 小游戏分类页。
+   数值全部走 app.wxss 的令牌层（字号 7 档 / --sp-* / --r-* / 颜色只用 var()）。
+
+   一张卡 = 玩法预览（上半）+ 标题·规模 + 一句说明（下半）。
+   为什么预览用真资源：
+     猜圈那张用的是包内真地图（assets/maps），轮盘那张用的是真英雄头像
+     （assets/heroes，和排位专区/比赛页同一批）—— 预览即玩法，不做纯装饰图。
+     头像和地图都在包里，不增加请求、不引外链（审核也省事）。
+
+   一屏预算（tab 页可用约 1288rpx）：
+     导航 169 + 引言 58 + 三张卡 276×3 + 卡间距 16 + 说明 66 + 页面边距 48 ≈ 1233，
+     还剩五十来 rpx，不滚动。所以**说明必须一行写完**（两行就会顶出去）。 */
+
+.gintro {
+  margin: var(--sp-2) 0 var(--sp-4);
+  font-size: var(--fs-sub);
+  color: var(--ink2);
+  line-height: 1.6;
+}
+
+/* ---------- 入口卡 ---------- */
+.gcard {
+  margin-bottom: var(--sp-2);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  /* 整块可点，热区远大于 80rpx；圆角要裁掉预览图的直角 */
+  overflow: hidden;
+}
+
+/* 预览区：150rpx 高、占满卡宽（三张卡才放得进一屏） */
+.gview {
+  position: relative;
+  height: 150rpx;
+  background: var(--sunken);
+  overflow: hidden;
+}
+.gview-img { width: 100%; height: 100%; }
+
+/* 猜圈预览：两个白圈 + 准星点。
+   圈必须给死宽高 + 负 margin 才能正好居中（0×0 的绝对定位元素看不见）。
+   白圈外再套一圈半透明黑，浅色地形（雪地/沙漠）上也看得清边界。 */
+.gzone {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  box-sizing: border-box;
+  border: 5rpx solid #ffffff;
+  border-radius: var(--r-full);
+  box-shadow: 0 0 0 2rpx rgba(0, 0, 0, 0.55);
+}
+.gzone-out { width: 120rpx; height: 120rpx; margin: -60rpx 0 0 -60rpx; }
+.gzone-in { width: 60rpx; height: 60rpx; margin: -30rpx 0 0 -30rpx; }
+.gpin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16rpx;
+  height: 16rpx;
+  margin: -8rpx 0 0 -8rpx;
+  box-sizing: border-box;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  border: 3rpx solid #ffffff;
+  box-shadow: 0 0 0 1rpx rgba(0, 0, 0, 0.55);
+}
+
+/* 圈型速判预览：白圈 + 四个字母点（示意图，不是真实题目的坐标） */
+/* ⚠️ 这一节里的 14/18/30/58rpx 负 margin 都是"半尺寸居中"（元素自己宽高的一半 + 偏移），
+   不是间距，所以不按 4rpx 网格算 —— 和猜圈页 .rdot 的 -11rpx 是同一类。 */
+.gpick-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 120rpx;
+  height: 120rpx;
+  margin: -60rpx 0 0 -60rpx;
+  box-sizing: border-box;
+  border-radius: var(--r-full);
+  border: 4rpx solid #ffffff;
+  box-shadow: 0 0 0 2rpx rgba(0, 0, 0, 0.55);
+}
+.gdot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40rpx;
+  height: 40rpx;
+  margin: -20rpx 0 0 -20rpx;
+  box-sizing: border-box;
+  border-radius: var(--r-full);
+  background: var(--card);
+  border: 2rpx solid var(--accent-ink);
+  text-align: center;
+}
+.gdot-t {
+  font-size: var(--fs-min);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+  line-height: 36rpx;
+}
+/* 四个点摆在圆心上下左右各 38rpx —— 正好落在 120rpx 的白圈里 */
+.gdot-n { margin-top: -58rpx; }
+.gdot-s { margin-top: 18rpx; }
+.gdot-w { margin-left: -58rpx; }
+.gdot-e { margin-left: 18rpx; }
+
+/* 轮盘预览：五个英雄头像排成一排，各自歪一点（像抓在手里的一把牌） */
+.gavs {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gav {
+  flex: 0 0 auto;
+  width: 96rpx;
+  height: 96rpx;
+  margin: 0 var(--sp-2);
+  border-radius: var(--r-full);
+  background: var(--sunken);
+  border: 2rpx solid var(--line);
+}
+/* 指针：压在正中间那个头像上，尖朝下 */
+.gptr {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  margin-left: -14rpx;
+  width: 0;
+  height: 0;
+  border-left: 14rpx solid transparent;
+  border-right: 14rpx solid transparent;
+  border-top: 22rpx solid var(--accent-ink);
+}
+
+/* ---------- 卡里的文字 ---------- */
+.gbody { padding: var(--sp-3) var(--sp-5) var(--sp-4); }
+.grow { display: flex; align-items: baseline; justify-content: space-between; }
+.gtitle {
+  font-size: var(--fs-head);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+  line-height: 1.3;
+}
+.gmeta {
+  flex: 0 0 auto;
+  margin-left: var(--sp-4);
+  font-size: var(--fs-min);
+  color: var(--ink3);
+  line-height: 1.5;
+  letter-spacing: 0.5rpx;
+}
+.gdesc {
+  display: block;
+  margin-top: var(--sp-2);
+  font-size: var(--fs-sub);
+  color: var(--ink2);
+  line-height: 1.6;
+}
+
+/* ---------- 页脚说明 ---------- */
+.gnote {
+  margin-top: var(--sp-6);
+  font-size: var(--fs-min);
+  color: var(--ink3);
+  line-height: 1.75;
+  letter-spacing: 0.5rpx;
+}

@@ -1,0 +1,200 @@
+<view class="wrap theme-{{theme}}">
+
+  <!-- 自定义导航栏：微信原生那条不接受任何自定义元素，
+       而我们要在标题左边放 ⚙ —— 所以整条自己画（navigationStyle: custom）。
+       高度由 JS 按状态栏 + 胶囊位置算好，各机型都不会错位。 -->
+  <view class="navbar" style="padding-top: {{navTop}}px; height: {{navH}}px;">
+    <view class="navbtn {{panelOpen ? 'navbtn-on' : ''}}" bindtap="onTogglePanel">⚙</view>
+    <text class="navtitle">{{T.navMaps}}</text>
+    <text wx:if="{{updatedAt}}" class="navtime">{{updatedAt}}</text>
+    <!-- 右边留出胶囊的位置，标题才不会被压到胶囊下面 -->
+    <view class="navspace" style="width: {{navRight}}px;"></view>
+  </view>
+
+  <view wx:if="{{panelOpen}}" class="panel">
+    <!-- 语言 -->
+    <view class="panel-t">{{T.panelLang}}</view>
+    <view class="panel-row">
+      <view class="langsw">
+        <view class="langsw-i langsw-l {{lang === 'zh' ? 'langsw-on' : ''}}" data-l="zh" bindtap="onLang">中文</view>
+        <view class="langsw-i langsw-r {{lang === 'en' ? 'langsw-on' : ''}}" data-l="en" bindtap="onLang">EN</view>
+      </view>
+    </view>
+    <!-- 主题 -->
+    <view class="panel-t">{{T.panelTheme}}</view>
+    <view class="panel-row">
+      <view class="langsw">
+        <view class="langsw-i langsw-l {{theme === 'dark' ? 'langsw-on' : ''}}" data-t="dark" bindtap="onTheme">{{T.themeDark}}</view>
+        <view class="langsw-i langsw-r {{theme === 'light' ? 'langsw-on' : ''}}" data-t="light" bindtap="onTheme">{{T.themeLight}}</view>
+      </view>
+    </view>
+    <view class="panel-t">{{T.pickTitle}}<text class="panel-hint">{{T.pickHint}}</text></view>
+    <view wx:for="{{allModes}}" wx:key="id" class="panel-row" data-id="{{item.id}}" bindtap="onToggleMode">
+      <view class="panel-box {{item.on ? 'panel-on' : ''}}">{{item.on ? '✓' : ''}}</view>
+      <text class="panel-name">{{item.label}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{err.kind}}" class="msg msg-{{err.style}}">
+    <text class="msg-title">{{err.title}}</text>
+    <text class="msg-body">{{err.message}}</text>
+  </view>
+
+  <view wx:if="{{unknownKeys.length && !err.kind}}" class="msg msg-info">
+    <text class="msg-body">{{T.unknownKeysPre}}{{unknownKeysText}}{{T.unknownKeysPost}}</text>
+  </view>
+
+  <view wx:if="{{loading && !modes.length}}" class="skeleton">{{T.loading}}</view>
+
+  <!-- 匹配被默认收起时给一句提示 —— 不然用户以为匹配没了。
+       右边那个「不再显示」点一下就永久关掉（存本地偏好）。 -->
+  <view wx:if="{{pubsHidden && !hidePubsHint && !err.kind}}" class="tip">
+    <text class="tip-t">{{T.pubsHiddenHint}}</text>
+    <text class="tip-x" catchtap="onHidePubsHint">{{T.pubsHintHide}}</text>
+  </view>
+
+  <!-- 四个模式自上而下四行。顺序（匹配→排位→外卡→轮换）在 viewmodel 里排，不在这里写死。 -->
+  <!-- data-pin 留给调试和测试：一眼能看出当前置顶的是哪个模式。
+       （置顶只影响排序，不再画强调边框，所以 WXML 里没有别处用到它。） -->
+  <view class="rows" data-pin="{{pin}}">
+    <!-- 置顶的模式排在最前面，但**不再加强调边框**（用户 2026-10 觉得红框太扎眼）。
+       顺序本身已经能说明哪个是置顶的。
+       data-pinned 留给调试和测试：一眼能看出这行是不是置顶的那张。 -->
+  <view wx:for="{{modes}}" wx:key="id" data-pinned="{{item.pinned}}" class="mrow {{item.compact ? 'mrow-compact' : ''}}">
+
+      <!-- 有没有实景照不再是分支依据：外卡也没有照片但仍是"完整信息"的卡。
+           现在按 compact 分：匹配/排位 = 照片大卡，外卡/轮换 = 半宽紧凑卡。 -->
+      <block wx:if="{{!item.compact}}">
+        <view class="mband {{item.image ? '' : 'mband-empty'}}">
+          <image wx:if="{{item.image}}" class="mimg" src="{{item.image}}" mode="aspectFill" lazy-load></image>
+          <!-- 上下各一层渐变：上面给模式名做底，下面给地图名与倒计时做底 -->
+          <view class="mscrim mscrim-top"></view>
+          <view class="mscrim mscrim-bot"></view>
+
+          <!-- 模式名：压在照片左上，用深色底片保证可读 —— 这是"这是哪个模式"的第一眼信息 -->
+          <view class="mchip">
+            <text class="mchip-t">{{item.label}}</text>
+          </view>
+
+          <view class="mover">
+            <block wx:if="{{item.active}}">
+              <view class="mrowline">
+                <text class="mapname">{{item.map}}</text>
+                <view class="cdstack">
+                  <text class="cdlab">{{T.rotateIn}}</text>
+                  <text class="cd {{item.urgent ? 'cd-urgent' : ''}}">{{item.cd}}</text>
+                </view>
+              </view>
+              <!-- 本场时段也压在照片上：原来它在照片下面占一整行，
+                   把那一行省掉，照片才能做得更高、间距也更宽松 -->
+              <view class="msubline">
+                <text class="msub">{{T.thisRound}} {{item.span}}</text>
+                <text wx:if="{{item.eventText}}" class="mevt-img">{{item.eventText}}</text>
+              </view>
+            </block>
+            <block wx:else>
+              <text class="mapname mo-off">{{T.modeOff}}</text>
+            </block>
+          </view>
+
+          <view wx:if="{{item.active}}" class="pbar pbar-abs">
+            <view class="pbar-in" style="width: {{item.pct}}%; background: {{item.tint}}"></view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 没有实景照的模式（轮换用的是骷髅镇/碎片这类小区域图）：
+           不留空图区，改成紧凑版 —— 左侧一条该模式的配色竖条 + 大字地图名。 -->
+      <block wx:else>
+        <!-- 点这张卡本体就展开轮换时间表：默认**不放按钮**，省掉一行高度。
+             只有轮换那张有反应（onTapCard 里判 id）。 -->
+        <view class="mplain" data-id="{{item.id}}" bindtap="onTapCard">
+          <view class="mbar" style="background: {{item.tint}}"></view>
+          <view class="mplain-main">
+            <view class="mfoot mfoot-tight">
+              <text class="mlabel">{{item.label}}</text>
+              <!-- 轮换没有地图照片，所以"这一轮在玩什么玩法"必须写出来（控制 / 团队死斗…） -->
+              <text wx:if="{{item.eventText}}" class="mevt">{{item.eventText}}</text>
+            </view>
+
+            <block wx:if="{{item.active}}">
+              <view class="mplain-row">
+                <text class="mplain-name">{{item.map}}</text>
+                <view class="cdstack">
+                  <text class="cdlab cdlab-dark">{{T.rotateIn}}</text>
+                  <text class="cd cd-dark {{item.urgent ? 'cd-urgent' : ''}}">{{item.cd}}</text>
+                </view>
+              </view>
+              <text class="span">{{T.thisRound}} {{item.span}}</text>
+              <view class="pbar">
+                <view class="pbar-in" style="width: {{item.pct}}%; background: {{item.tint}}"></view>
+              </view>
+            </block>
+
+            <block wx:else>
+              <text class="mplain-name mo-off">{{T.modeOff}}</text>
+              <!-- 那句解释「不在轮换中…」只在大卡里显示：
+                   半宽卡宽度不够，长句会溢出、挡住整张卡。 -->
+              <text wx:if="{{!item.compact}}" class="span">{{T.modeOffTip}}</text>
+            </block>
+          </view>
+        </view>
+
+        <!-- 轮换时间表：点上面那张卡展开。默认不显示按钮，展开后才有这一块。 -->
+        <block wx:if="{{item.id === 'mixtape'}}">
+          <view wx:if="{{schedOpen}}" class="sched">
+            <view wx:if="{{schedLoading}}" class="sched-load">{{T.loading}}</view>
+
+            <view wx:for="{{sched}}" wx:for-item="g" wx:key="label" class="sched-g">
+              <view class="sched-gh">{{g.label}}</view>
+              <view class="sched-rows">
+                <view wx:for="{{g.rows}}" wx:for-item="r" wx:key="idx" class="sched-r">
+                  <text class="sched-t">{{r.time}}</text>
+                  <text class="sched-m">{{r.map || T.schedUnknownMap}}</text>
+                  <text class="sched-e">{{r.event}}</text>
+                </view>
+              </view>
+            </view>
+
+            <view class="note">{{T.schedNote}}</view>
+          </view>
+        </block>
+      </block>
+
+      <block wx:if="{{item.active}}">
+        <view wx:if="{{item.nexts.length}}" class="nexts">
+          <text class="nexts-t">{{T.nextUp}}</text>
+          <!-- 两种排版分开写，别用"插一个占满整行的元素强制换行"那种技巧 ——
+               在 flex 行里它会**把前面的地图挤到没宽度**，字被一个一个竖着排。
+               有玩法（轮换）：地图一行，玩法+时间一行；
+               没玩法（外卡）：地图和时间同一行，时间靠右。 -->
+          <!-- 半宽卡（外卡/轮换并排）才竖排；全宽卡回到"接着轮换 地图 时间"一行内联 -->
+          <view wx:for="{{item.nexts}}" wx:for-item="n" wx:key="idx"
+                class="next-item {{item.compact && n.eventText ? 'next-col' : ''}}">
+            <text class="next-map">{{n.map}}</text>
+            <view wx:if="{{n.eventText}}" class="next-rest">
+              <text class="next-evt">{{n.eventText}}</text>
+              <text class="next-time">{{n.span}}</text>
+            </view>
+            <text wx:else class="next-time">{{n.span}}</text>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+
+  <!-- 广告位：未配置 unit-id 时整个组件不渲染（见 utils/ad.js）。
+       放在卡片**下面**、页脚上面 —— 第一屏是"开关 + 卡片"，不会被大广告糊脸；
+       匹配/排位二选一之后卡片少了一张，这里也在第一屏内，广告照样有曝光。 -->
+  <view class="adbox">
+    <ad wx:if="{{adUnit}}" unit-id="{{adUnit}}" ad-intervals="60" binderror="onAdError"></ad>
+  </view>
+
+  <!-- 这里原来有一个「地图工具 → 猜圈练习」入口。
+       2026-10-16 猜圈成了第 4 个 tab（用户要求），地图页这个入口就多余了，已删除。 -->
+
+  <view class="foot">
+    {{T.foot1}}
+    {{T.foot2}}
+  </view>
+</view>

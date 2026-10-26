@@ -1,0 +1,91 @@
+
+
+/* ================= 本赛季段位分布 ================= */
+/* 「你在这里」：**文字标记 + 描边一起用**，不拿颜色单独表意（无障碍要求）。 */
+.mine {
+  background: var(--raised);
+  border: 1rpx solid var(--accent);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-2);
+}
+.mine-h { display: flex; align-items: baseline; margin-bottom: var(--sp-1); }
+.mine-k { font-size: var(--fs-min); color: var(--ink3); margin-right: var(--sp-2); }
+.mine-tier { font-size: var(--fs-head); font-weight: var(--fw-bold); color: var(--ink); line-height: 1.3; }
+.mine-t { font-size: var(--fs-min); color: var(--ink2); display: block; line-height: 1.6; }
+
+/* 每一档一行：名字 / 条形 / 百分比 + 人数。
+   名字给到 33% 是留给英文的（"Apex Predator" 在 --fs-min 下约 78px）。 */
+.rrow { display: flex; align-items: center; padding: var(--sp-2) 0; border-radius: var(--r-sm); }
+.rrow-l { flex: 0 0 33%; min-width: 0; }
+.rrow-name {
+  display: block;
+  font-size: var(--fs-min);
+  color: var(--ink2);
+  line-height: 1.5;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.rrow-bar { flex: 1 1 auto; height: 12rpx; background: var(--track); border-radius: var(--r-full); margin: 0 var(--sp-3); overflow: hidden; }
+.rrow-fill { height: 100%; background: var(--info-ink); border-radius: var(--r-full); }
+.rrow-v { flex: 0 0 132rpx; text-align: right; }
+.rrow-pct { font-size: var(--fs-sub); font-weight: var(--fw-bold); color: var(--ink); display: block; font-variant-numeric: tabular-nums; }
+.rrow-n { font-size: var(--fs-min); color: var(--ink3); display: block; font-variant-numeric: tabular-nums; }
+/* 玩家自己那一档：底色 + 名字加重 + 明写"你在这里" */
+.rrow-mine { background: var(--raised); }
+.rrow-mine .rrow-name { color: var(--ink); font-weight: var(--fw-bold); }
+.rrow-mine .rrow-fill { background: var(--accent); }
+.rrow-tag { font-size: var(--fs-min); color: var(--accent-ink); display: block; line-height: 1.5; }
+
+/* 电脑端：选手栏不横滚，改成换行铺开（否则滚轮被 scroll-view 吃掉，页面滑不动） */
+.prochips-pc {
+  white-space: normal;
+  flex-wrap: wrap;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+}
+
+/* 选手选择：搜索框 + 换行网格 + 展开 */
+.prosearch {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-2);
+  padding: 0 var(--sp-2);
+  height: 68rpx;
+  border-radius: var(--r-full);
+  background: var(--sunken);
+  border: 1rpx solid var(--line);
+}
+.prosearch-in {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-min);
+  color: var(--ink);
+}
+.prosearch-x {
+  flex: 0 0 auto;
+  padding: 6rpx 16rpx;
+  border-radius: var(--r-full);
+  background: var(--track);
+  font-size: var(--fs-min);
+  color: var(--ink2);
+}
+/* 选手网格：换行铺开，不再横滑（手机上横滑找人也累） */
+.prox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  overflow: visible;
+  white-space: normal;
+  height: auto;
+}
+.promore {
+  margin: var(--sp-2) 0 var(--sp-3);
+  padding: 10rpx 0;
+  text-align: center;
+  font-size: var(--fs-min);
+  color: var(--ink3);
+}

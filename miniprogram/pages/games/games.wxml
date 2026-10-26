@@ -1,0 +1,96 @@
+<!--
+  小游戏分类页（第 4 个 tab）。说明见 games.js 顶部。
+
+  版面：导航（⚙ + 标题） → 一句引言 → 两张入口卡 → 一句说明。
+  两张卡各带一块**玩法预览**（不是装饰图）：
+    · 猜圈：真地图 + 两个安全区圈 + 准星点 —— 就是进页面后要做的事；
+    · 轮盘：五个英雄头像排成一圈被指针压着 —— 就是"抽英雄"这件事。
+  预览区用的是真实资源（assets/maps、assets/heroes），不做假图。
+-->
+<view class="wrap theme-{{theme}}" data-lang="{{lang}}">
+
+  <!-- 自定义导航栏：⚙ 常驻左上角，和地图页 / 比赛页一模一样 -->
+  <view class="navbar" style="padding-top: {{navTop}}px; height: {{navH}}px;">
+    <view class="navbtn {{panelOpen ? 'navbtn-on' : ''}}" bindtap="onTogglePanel">⚙</view>
+    <text class="navtitle">{{T.navGames}}</text>
+    <view class="navspace" style="width: {{navRight}}px;"></view>
+  </view>
+
+  <!-- 设置面板：这一页只有语言和主题 -->
+  <view wx:if="{{panelOpen}}" class="panel">
+    <view class="panel-t">{{T.panelLang}}</view>
+    <view class="panel-row">
+      <view class="langsw">
+        <view class="langsw-i langsw-l {{lang === 'zh' ? 'langsw-on' : ''}}" data-l="zh" bindtap="onLang">中文</view>
+        <view class="langsw-i langsw-r {{lang === 'en' ? 'langsw-on' : ''}}" data-l="en" bindtap="onLang">EN</view>
+      </view>
+    </view>
+    <view class="panel-t">{{T.panelTheme}}</view>
+    <view class="panel-row">
+      <view class="langsw">
+        <view class="langsw-i langsw-l {{theme === 'dark' ? 'langsw-on' : ''}}" data-t="dark" bindtap="onTheme">{{T.themeDark}}</view>
+        <view class="langsw-i langsw-r {{theme === 'light' ? 'langsw-on' : ''}}" data-t="light" bindtap="onTheme">{{T.themeLight}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="gintro">{{T.gamesIntro}}</view>
+
+  <!-- 入口 1：猜圈练习 -->
+  <view class="gcard" data-p="ringguessr" bindtap="onOpen">
+    <view class="gview">
+      <image class="gview-img" src="{{ringMap}}" mode="aspectFill"></image>
+      <!-- 两个安全区圈 + 准星：和页面里的画法一样（白圈 + 红点） -->
+      <view class="gzone gzone-out"></view>
+      <view class="gzone gzone-in"></view>
+      <view class="gpin"></view>
+    </view>
+    <view class="gbody">
+      <view class="grow">
+        <text class="gtitle">{{T.gameRingTitle}}</text>
+        <text class="gmeta">{{ringMeta}}</text>
+      </view>
+      <text class="gdesc">{{T.gameRingDesc}}</text>
+    </view>
+  </view>
+
+  <!-- 入口 2：圈型速判（白圈 + 四个候选字母，就是游戏里的样子） -->
+  <view class="gcard" data-p="ringpick" bindtap="onOpen">
+    <view class="gview">
+      <image class="gview-img" src="{{pickMap}}" mode="aspectFill"></image>
+      <view class="gpick-ring"></view>
+      <view class="gdot gdot-n"><text class="gdot-t">A</text></view>
+      <view class="gdot gdot-e"><text class="gdot-t">B</text></view>
+      <view class="gdot gdot-s"><text class="gdot-t">C</text></view>
+      <view class="gdot gdot-w"><text class="gdot-t">D</text></view>
+    </view>
+    <view class="gbody">
+      <view class="grow">
+        <text class="gtitle">{{T.gamePickTitle}}</text>
+        <text class="gmeta">{{pickMeta}}</text>
+      </view>
+      <text class="gdesc">{{T.gamePickDesc}}</text>
+    </view>
+  </view>
+
+  <!-- 入口 3：英雄与武器轮盘 -->
+  <view class="gcard" data-p="wheel" bindtap="onOpen">
+    <view class="gview">
+      <view class="gavs">
+        <image wx:for="{{heroPicks}}" wx:key="src" class="gav" style="{{item.style}}"
+               src="{{item.src}}" mode="aspectFill"></image>
+      </view>
+      <!-- 指针压在正中间那个头像上：一眼看出是"转盘抽到谁" -->
+      <view class="gptr"></view>
+    </view>
+    <view class="gbody">
+      <view class="grow">
+        <text class="gtitle">{{T.gameWheelTitle}}</text>
+        <text class="gmeta">{{wheelMeta}}</text>
+      </view>
+      <text class="gdesc">{{T.gameWheelDesc}}</text>
+    </view>
+  </view>
+
+  <view class="gnote">{{T.gamesHint}}</view>
+</view>

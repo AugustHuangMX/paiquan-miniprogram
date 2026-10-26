@@ -1,0 +1,564 @@
+# AI-CONTEXT · Apex 小程序交接说明书
+
+> 给接手这个项目的 AI 看的**完整背景**。读完它，你应该能在没有原作者在场的情况下：
+> 判断一个改动该动哪个文件、知道哪些东西不能碰、并且知道改完怎么自证没弄坏。
+>
+> 事实核对于 **2026-10-26**（代码快照当日）：30 个测试文件 / 600 条断言全绿。
+> 文中「实测」= 我读过代码/跑过命令得到的结论；「据 README」= 沿用原作者记录、我未独立验证。
+
+---
+
+## 1. 产品事实
+
+| 项 | 内容 |
+|---|---|
+| 名字 | 「英雄地图轮换助手」（名称**不含 APEX**，EA 注册商标） |
+| 形态 | 微信小程序，已上线（2026-10-09 首日 248 人访问） |
+| AppID | `wx8b0175f85d4bb06c`（作者本人的，交给你用不了） |
+| 云环境 | `cloud1-d8ggx095757c58e20`（写死在 `miniprogram/app.js`） |
+| 用户 | 国内 Apex 玩家，**赛前/赛中、单手、碎片时间**打开 |
+| 用户要什么 | 现在哪张图 / 还有多久轮换 / 猎杀线多少分 / 下一场几点 |
+| 成功标准 | **点开 → 一眼拿到数 → 关掉**。停留时间是成本，不是指标 |
+| 参照机型 | iPhone 12/13，可视高 **1288rpx** |
+
+**产品原则（改东西时用来判断"该不该做"）**
+
+1. **一屏出结论**。滚动是失败模式，不是正常交互。
+2. **不编数据**。取不到、算不出、没记录就诚实留空或显示英文原值 —— 假数据比空缺糟得多。
+3. **零配置**。任何要用户自己申请 Key、登录、填表的步骤都算产品缺陷。
+4. **两个主题、两种语言都是真需求**。新样式必须在 深/浅 × 中/英 四种组合下同时成立。
+5. **先改工艺再动风格**。字号偏小、对比度不达标是硬缺陷，优先级高于任何审美偏好。
+
+**信息架构（用户已确认，不可改）**：地图页四行自上而下 = 匹配 → 排位 → 外卡 → 轮换。
+顺序由 `utils/viewmodel.js` 决定，**不在 WXML 里写死**。
+
+**明确不做的三件事**（别"顺手加上"）
+
+- 全天换图时间表（上游只给当前+下一场，硬编码循环顺序赛季一换就失准）。
+- 段位分布"官方数据"（Respawn 不发布，网上百分比都是自制的）。
+- 用户历史对局记录（上游 API 已实测拿不到，见 §13）。
+
+---
+
+## 2. 系统架构
+
+三层，中间那层不是可选的：
+
+```
+┌─────────────────┐   wx.cloud.callFunction    ┌──────────────────┐   HTTPS   ┌────────────────────────────┐
+│ 微信小程序前端   │ ─────────────────────────▶ │ 云函数 apex       │ ────────▶ │ api.apexlegendsstatus.com  │
+│ miniprogram/     │   （微信私有协议，不受      │ cloudfunctions/  │           │  + apexlegendsstatus.com   │
+│                  │     域名白名单限制）        │ apex/            │           │    （网页站，抓 HTML）      │
+└─────────────────┘                            └────────┬─────────┘           └────────────────────────────┘
+                                                        │
+                                                        ▼
+                                              云开发数据库（5 个集合）
+```
+
+**为什么必须这么绕**（微信官方写死的两条规则）：
+
+> 「每个微信小程序需要事先设置通讯域名，小程序只可以跟指定的域名进行网络通信」
+> 「**域名必须经过 ICP 备案**」
+
+`api.apexlegendsstatus.com` 是未备案境外域名 → **小程序端直连必被拦**。
+云函数出网不受此限，于是它既做代理、又做数据归一化，还替用户藏住了 API Key。
+
+**由此带来的三个结构性后果**（改动时别破坏）：
+
+1. 上游字段一改，**只改云函数、重新部署即可**，不用提审、用户无感。
+2. Key 只在云函数环境变量里，**永远不下发到客户端**（`sync.test.mjs` 静态检查守着）。
+3. 能放在云端的逻辑就放云端（归一化、译名表、抗变化），这是第一优先级。
+
+---
+
+## 3. 数据流（一次开屏）
+
+```
+app.js onLaunch → wx.cloud.init({env: CLOUD_ENV})
+   │
+   ▼
+pages/maps: cloud.callCloud({action:"rotation"})  ──▶ 云函数 handler → /maprotation?version=2
+             cloud.callCloud({action:"schedule"})  ──▶ rotation_log 集合（后台定时攒的）
+   │
+   ▼
+utils/viewmodel.js  buildModes() / buildSchedule()  ← 纯函数：数据 → 界面字段（含文案、差额、进度条）
+   │
+   ▼
+pages/maps.wxml  {{...}}  ← 只渲染，不含业务判断
+```
+
+**分层铁律**：`页面 js` 只管"取数 + 调 setData"；**判断/换算全在 `utils/` 的纯函数里**。
+理由很实际：页面 js 里有 `Page({...})`，Node 里 require 不了，**放进页面就没法写单元测试**。
+所以凡是值得测的逻辑，都在 `utils/`。
+
+---
+
+## 4. 云函数：action 总表
+
+入口 `cloudfunctions/apex/index.js`；共享逻辑在 `handler.js`。
+**两种调用方式**：前端按需 `callFunction({action})`，或定时触发器 `event.Type === "Timer"`。
+
+| action | 做什么 | 上游/数据 | 缓存 | 依赖数据库 |
+|---|---|---|---|---|
+| `rotation` | 当前 + 下一场轮换（4 个模式） | `GET /maprotation?version=2` | 30 秒 | — |
+| `predator` | 四平台猎杀底分 + 较昨日涨幅 | `GET /predator` | 10 分钟 | `predator_snapshots` |
+| `player` | 玩家详情（名字或 uid） | `GET /bridge?version=5` | 不缓存（含个人） | `player_rank_snapshots` |
+| `servers` | 服务器状态 | `GET /servers` | 60 秒 | — |
+| `esports` | 某场比赛的赛程 + 积分榜 | **overstat.gg** 公开 JSON（不需要 Key） | 5 分钟 / 1 分钟 | — |
+| `trackAdd` / `trackList` / `trackRemove` | 追踪名单（按 openid 隔离，每人最多 5 个） | 数据库 | — | `tracked_players` |
+| `schedule` | 轮换时间表（后台攒下来的场次） | `rotation_log` | — | `rotation_log` |
+| `config` | 赛季结束时间 + 活动 + 赛程 | `site_config`，缺了用内置兜底 | — | `site_config`（可缺） |
+| `comps` | 职业热门三人组合 | 解析 `apexlegendsstatus.com/algs/...` HTML | 6 小时 | — |
+| `pickrates` | 英雄选取率（分段位） | 解析 `apexlegendsstatus.com` 网页 | 1 小时 | — |
+| `rankdist` | 段位分布（实时） | `/lib/php/rankdistrib.php?unranked=yes`（JSON） | 6 小时 | — |
+| `teams` | 战队专区（名单 + 当前分） | `curated_roster_resolved.json` + `/bridge` | 30 分钟 | — |
+| `Timer` | 定时轮询追踪名单 + 顺手记一条轮换 | — | — | 同上 |
+
+**数据库集合（5 个，都要在云开发控制台手动建）**
+
+| 集合 | 内容 | 建不建的影响 |
+|---|---|---|
+| `predator_snapshots` | 每小时一条猎杀底分 | 不建 → 没有「较昨日 +X」，分数线照常 |
+| `tracked_players` | 追踪名单（by openid） | 不建 → 追踪功能不可用 |
+| `player_rank_snapshots` | 玩家排位快照 | 同上 |
+| `rotation_log` | 轮换记录（`_id = 模式_开始时间`，天然幂等） | 不建 → 地图列显示「待记录」 |
+| `site_config` | 赛季结束时间 / 活动 / 赛程（可在控制台直接改 doc） | 不建 → 用内置兜底值 |
+
+**容错铁律**：数据库/上游的任何错误都必须被**吞掉并降级**，绝不让用户看不到主数据。
+`index.js` 里 `require("wx-server-sdk")` 整个包在 try/catch 里；`store.js` / `playerStore.js` 每个操作都 catch；
+`handler.js` 用 `settle(promise, 1500)` 给所有查库加超时（数据库卡住不能拖到云函数超时）。
+
+**运行时**：Node.js **16.13**，依赖只有 `wx-server-sdk`（锁 `~2.7.x`）。
+→ **不能用全局 `fetch`**（Node 18 才内置），所以有自写的 `fetcher.js`（只用 `http/https/zlib/url`）。
+这条有测试盯着（`sync.test.mjs`），别"顺手换成 axios/fetch"。
+
+---
+
+## 5. 前端：页面矩阵
+
+| 页面 | 路径 | 数据来源 | 关键文件 | 备注 |
+|---|---|---|---|---|
+| 地图（tab） | `pages/maps/` | 云端 `rotation` + `schedule` | `viewmodel.js`、`prefs.js` | **旗舰页**；四行卡片 + 倒计时 + 设置面板 |
+| 排位专区（tab） | `pages/predator/` | 云端 `predator`/`config`/`rankdist`/`teams`/`player` + 离线 `prostats_data.js` | `rankdist.js`、`prostats.js`、`viewmodel.js` | 猎杀线 / 职业选手数据 / 段位分布 / 战队 / 战绩查询 |
+| 比赛（tab） | `pages/matches/` | **完全离线**：`algs_data.js` + `next_match_data.js` | `algs.js`、`nextmatch.js` | 不联网、不耗云函数配额 |
+| 小游戏（tab） | `pages/games/` | 本地 | `rings.js`、`ringpick.js`、`wheel_data.js` | 分类入口页（3 个入口卡片） |
+| 猜圈练习 | `pages/ringguessr/` | 本地 `match_rings_data.js` | `rings.js` | canvas 游戏：拖动 + 双指缩放，8 题 / 20 秒 |
+| 圈型速判 | `pages/ringpick/` | 本地 `rings_data.js` + `map_ends_data.js` | `ringpick.js` | 四选一，10 秒一题 |
+| 英雄/武器轮盘 | `pages/wheel/` | 本地 `codex_data.js` | `wheel_data.js` | 纯随机，不按选取率加权 |
+
+**注意**：`pages/maps/` **没有自己的 `.wxss`**（只有 js/json/wxml），它的样式全部在根目录 `app.wxss` 里。
+其他 6 个页面各自有 `.wxss`。改地图页视觉 = 改 `app.wxss`（全局文件，会波及其他页面，小心）。
+
+**广告位**：`utils/ad.js` 的 `AD_UNITS` 已填**真实**广告位 ID（`adunit-419d525ab9b59819`，4 个页面共用），
+流量主已开通。ID 为空/格式不对时 `adUnitFor()` 返回空串，页面 `wx:if` 不成立，组件完全不渲染 —— 填错不会崩。
+
+---
+
+## 6. 代码分层与职责
+
+### 前端 `miniprogram/`
+
+| 文件 | 职责 | 能碰 wx.* 吗 |
+|---|---|---|
+| `utils/core.js` | 归一化 / 格式化 / 错误分类 / 译名表（`MAP_CN`） / 涨幅窗口判定 | ❌ 纯函数 |
+| `utils/viewmodel.js` | 数据 → 界面字段（四行顺序、倒计时文案、差额、分享链接） | ❌ 纯函数 |
+| `utils/cloud.js` | 云函数调用封装：**永远 resolve，不 reject**，错误文案截断 60 字 | ✅ |
+| `utils/i18n.js` | 中英两套词典 + 语言开关（`T.xxx`，默认 `zh`） | ❌ |
+| `utils/theme.js` | 主题开关 + 原生外壳同步（导航栏/tabBar/窗口底色） | ✅ |
+| `utils/prefs.js` | **唯一**允许碰本地存储的文件（只存界面偏好） | ✅ |
+| `utils/ad.js` | 广告位 ID + 开关 | ✅ |
+| `utils/algs.js` / `nextmatch.js` / `prostats.js` / `rankdist.js` / `rings.js` / `ringpick.js` / `wheel_data.js` | 各自区块的"数据 → 视图模型" | ❌ 纯函数 |
+| `utils/*_data.js` | 离线数据快照（见下表），**只读、别手改** | ❌ |
+
+**离线数据文件（8 个 `*_data.js`，改数据等于改产品口径）**
+
+> 其中 7 个是纯数据快照；`wheel_data.js` 除了候选池还含扇形几何（是代码），改它要看 `wheel.test.mjs`。
+
+| 文件 | 内容 | 快照日期 | 来源 |
+|---|---|---|---|
+| `algs_data.js` | ALGS 赛事统计（战队/局数/选取率/组合） | 2026-10-20 | `apexlegendsstatus.com/algs` 赛事总览页 |
+| `next_match_data.js` | 下一场比赛（赛程树 + 分组 + 队员） | 2026-10-26 | 同上（赛程树 + 分组名单） |
+| `prostats_data.js` | 职业选手排位数据（英雄/组合/枪械） | 2026-10-26 | B 站直播录像识别（离线） |
+| `codex_data.js` | 英雄/武器图鉴（28 英雄 + 枪） | 2026-10-16 | 项目自建 |
+| `match_rings_data.js` | 完整圈序列（猜圈题库） | 2026-10-25 | DGS + 社区数据，半径已按当前版本缩放 |
+| `rings_data.js` | 3 圈序列（速判题库） | 2026-10-25 | 上游 ring-guessr API |
+| `map_ends_data.js` | 每张图最终圈可能落点 | 2026-10-17 | 交互地图页内联数据 |
+| `wheel_data.js` | 轮盘候选池 + 扇形几何 | — | 读 codex |
+
+### 云端 `cloudfunctions/apex/`
+
+| 文件 | 职责 |
+|---|---|
+| `index.js` | 入口：读 `ALS_API_KEY`、初始化数据库、分发 Timer/schedule/config/comps/pickrates/rankdist/teams、兜底不抛异常 |
+| `handler.js` | 主逻辑：拼 URL、调用、错误分类、缓存、猎杀涨幅、追踪增删查 |
+| `core.js` | **与 `miniprogram/utils/core.js` 字节一致的副本** |
+| `fetcher.js` | 极简 HTTP 客户端（只用 Node 内置模块，兼容 Node 8~22） |
+| `esports.js` | overstat.gg 赛事接口（不需要 Key） |
+| `comps.js` / `pickrates.js` / `rankdist.js` | 三个"抓网页/JSON"的数据源，各自带内存缓存 |
+| `teams.js` | 战队专区：读名单 + 并行查分 |
+| `snapshot.js` / `store.js` | 猎杀快照的纯逻辑 / 数据库读写 |
+| `playerSnapshots.js` / `playerStore.js` | 玩家快照的纯逻辑 / 数据库读写 |
+| `rotationLog.js` | 轮换记录器（给"接下来两天几点打哪张图"供数） |
+| `trackerPoll.js` | 定时轮询追踪名单（超 200 人/400 人自动分片降频） |
+| `curated_roster.json` / `curated_roster_resolved.json` | 战队名单（换赛季直接改 JSON 重新部署，不动逻辑） |
+
+---
+
+## 7. 界面硬约束（违反即返工）
+
+来源：`docs/apex-miniapp-ui/SKILL.md` + `reference/tokens.md`，与 `app.wxss` 顶部令牌层一致。
+
+**数值**
+
+- 换算基准 375px：**1px = 2rpx**。
+- 字号只允许 7 档：`44 / 40 / 34 / 30 / 28 / 26 / 24` rpx。**24rpx 是绝对下限**
+  （微信官方最小档，12pt）。历史上出现过 19rpx（9.5px）—— 这是"看着累"的主因，别再犯。
+- 间距只走 4rpx 网格：4 / 8 / 12 / 16 / 20 / 24 / 32 / 64。
+- 字重只留 3 档：400 / 700 / 800（800 仅用于大数字）。不存在 600（中文字体上几乎同形）。
+- **地图卡另更严**：只留 44 / 34 / 24 三档、字重只留 400 / 700，**不用 800**（中文上是合成加粗，发虚）。
+- 中文**不加 `letter-spacing`**；标签/页脚小字可 0.5~1rpx。
+
+**颜色**
+
+- **只准写 `var(--x)`**，除白色外禁止写死色值。变量定义在 `app.wxss`：
+  `page{}` 深色（默认），`.wrap.theme-light{}` 覆盖同名变量。
+- **浅色必须覆盖深色的每一个变量**，漏一个就是"白底上的近白字"（`theme.test.mjs` 盯着）。
+- `color` **必须在 `.wrap` 上再声明一次**：`page{color:var(--ink)}` 在 page 层就把变量算成具体颜色了，
+  子元素继承的是算好的颜色而非变量。
+- 彩色文字浅色下要换同色系深色版（深色绿 `#3ddc84` 在白底只有 ~1.9:1，浅色用 `#0f8a4a`）。
+- 强调色**不照抄官方纯红 `#ff0000`**（白字对比度仅 4.00:1）；现用 `#d92b2b`（4.85:1）。
+- 强调色刻意拆成两个：`--accent`（填充用，够深）+ `--accent-ink`（文字用，够亮），别想着用一个红干两件事。
+
+**无障碍**
+
+- 正文/占位符 ≥ **4.5:1**，大字（≥18pt）≥ **3:1**（微信《适老化与无障碍设计指南》）。
+- 热区 ≥ **80×80rpx**（40×40pt）。
+- **颜色不单独承载语义**：百分比、名次、涨跌都要配文字（`static.test.mjs` 有用例）。
+
+**原生外壳**（WXSS 管不到）：导航栏/tabBar/回弹底色走 `utils/theme.js` 的 `applyChrome()`，
+`frontColor` 只接受 `#ffffff` / `#000000`。
+
+---
+
+## 8. 双语 × 主题（四种组合都要成立）
+
+- 文案：WXML 里**不许写死中文**，一律 `{{T.xxx}}`；`utils/i18n.js` 的 `DICT.zh` / `DICT.en` **必须成对**。
+  加新文案 = 两边各加一条（`i18n.test.mjs` 守望）。
+- 云函数返回的多语言字段必须成对给（`name` / `nameEn` / `label` / `labelEn`）。
+- 地图译名：查得到中文才显示中文，**查不到保留英文**。
+  `translateMapName` 会先去掉开头的 `the ` 再查一次（上游同图会写 `Dome` 和 `The Dome`）。
+  `i18n.test.mjs` 钉着一份译名清单，少一个就红。
+- **不许为了消掉英文就编译名**：`The Core` / `Zeus Station` / `Runoff` 保持英文。
+  猜错的名字比露出英文更糟（`core.test.mjs` 有断言）。
+- 主题：默认深色；`theme.js` 记当前值 + 同步外壳；`prefs.js` 落本地存储。
+- 自查清单：深×中、深×英、浅×中、浅×英 —— **四种都看一眼**，别只看你改的那一种。
+
+---
+
+## 9. 隐私与合规（这条是这个项目的招牌，别弄坏）
+
+**禁用接口清单**（`static.test.mjs` 扫全项目 `.js`，命中即红）：
+`getUserProfile` `getUserInfo` `getPhoneNumber` `getLocation` `chooseLocation` `chooseImage`
+`chooseMedia` `getClipboardData` `setClipboardData` `getWeRunData` `startRecord` `chooseAddress` `getUserCryptoManager`
+
+**本地存储口径（2026-10 已收窄，注意文档不同步）**
+
+- 原承诺："全项目不使用本地存储"。现在收窄为："**只存界面偏好，不含任何用户数据**"。
+- 只有 `utils/prefs.js` 能碰存储；键必须在上表白名单里：`lang` `theme` `modes` `pin` `hide_pubs_hint`。
+  想存新东西 → 先去 `static.test.mjs` 加白名单并想清楚它是不是用户数据。
+- `app.js` 刻意不设 `traceUser`：不采集 openid，就不用配《用户隐私保护指引》、不用弹授权框、不用逐项声明。
+- 没有「一键复制 UID」按钮是**故意的**：`wx.setClipboardData` 是隐私接口，用了就要配隐私指引。
+  改成 `<text user-select>` 让用户长按走系统复制，一个 API 都不碰。
+
+---
+
+## 10. 数据口径（"不编数据"具体长什么样）
+
+这些不是风格偏好，是产品的可信度底线，改代码时要能对上：
+
+| 现象 | 规则 | 反例（别做） |
+|---|---|---|
+| 猎杀线涨幅 | 必须存在 20~28 小时前的快照才显示；否则**整行不显示** | 显示 `+0`（会被读成"没涨"） |
+| 「X 分钟前更新」 | 上游那份数据的刷新时间，**不是**本地取数时间 | 用 `Date.now()` 现算 |
+| 中文译名 | 查不到就保留英文 | 猜一个像样的中文名 |
+| 轮换时间表 | 没记录显示「待记录」 | 编一个循环顺序 |
+| 选取率/组合解析失败 | **整块不显示** | 返回空数组（会被读成"没人玩"） |
+| 服务器状态认不出 | 整块不显示 | 硬凑一行「全部正常」 |
+| 轮盘 | 纯随机，不按选取率加权，不承诺"推荐" | 说"推荐你用这个" |
+| 圈型速判四选项 | 都在真实内切轨迹上，不做"一真三假"送分题 | 随机放三个假点 |
+| 段位分布 | 明确标注"第三方站点自己账号库里的分布，不是官方" | 说成官方数据 |
+
+---
+
+## 11. 测试地图（改完必跑）
+
+**怎么跑**：逐个文件，`node tests/xxx.test.mjs`。
+**不要用 `node --test tests/`** —— 运行器会 spawn 子进程并用管道收输出，在受控环境里报 `EPERM`。
+测试用 `node:test` + `node:assert/strict`，**零依赖**，任何 Node ≥18 都能跑。
+
+| 文件 | 断言数 | 守什么 | 改什么必须跑 |
+|---|---|---|---|
+| `core.test.mjs` | 68 | 归一化、uid、错误分类、涨幅计算、译名"不许猜" | 改 core.js |
+| `handler.test.mjs` | 49 | 云函数 handler：uid 重试、store 注入、追踪 action | 改 handler/index |
+| `page.test.mjs` | 65 | 七个页面行为：取数、查询、涨幅、猜圈、速判、轮盘 | 改页面 |
+| `static.test.mjs` | 32 | 隐私接口黑名单、本地存储白名单、WXML 一致性、颜色不表意 | 改任何 WXML/JS |
+| `sync.test.mjs` | 9 | 两份 core.js 字节一致、依赖白名单、不许用全局 fetch | 改 core.js / 云函数 |
+| `i18n.test.mjs` | 18 | 中英成对、不混排、地图译名清单、外壳跟随 | 加文案/改译名 |
+| `theme.test.mjs` | 8 | 浅色是否覆盖深色每一个变量 | 改 app.wxss 变量 |
+| `viewmodel.test.mjs` | 31 | 数据 → 界面字段 | 改 viewmodel |
+| `snapshot.test.mjs` | 15 | 快照分桶、挑基准、清理 | 改 snapshot/store |
+| `snapshot-store.test.mjs` | 13 | 数据库读写与错误降级（假 cloud） | 改 store |
+| `player-snapshots.test.mjs` | 10 | 玩家快照分桶/基准 | 改 playerSnapshots |
+| `player-store.test.mjs` | 11 | 追踪名单 + 玩家快照存储层 | 改 playerStore |
+| `tracker.test.mjs` | 10 | 追踪 action：配额、验人、增删查 | 改追踪 |
+| `tracker-poll.test.mjs` | 6 | 定时轮询 + 200/400 安全阀 | 改 trackerPoll |
+| `teams.test.mjs` | 3 | 战队专区：读名单 + 取分 | 改 teams |
+| `servers.test.mjs` | 22 | 服务器状态归一化（后端保留、前端已移除） | 改 servers |
+| `predgap.test.mjs` | 20 | 距猎杀线差额 | 改差额逻辑 |
+| `share.test.mjs` | 21 | 分享链接参数（含 uid）往返 | 改分享 |
+| `cloud.test.mjs` | 9 | 云调用封装（永不 reject、错误截断） | 改 cloud.js |
+| `ad.test.mjs` | 6 | 广告位开关 | 改 ad.js |
+| `prostats.test.mjs` | 14 | 职业选手数据：英雄名与头像 | 改 prostats |
+| `algs.test.mjs` | 21 | ALGS 快照：赛事/选取率/组合 | 改 algs |
+| `nextmatch.test.mjs` | 30 | 下一场比赛：赛程/分组/队员/双语 | 改 nextmatch |
+| `comps.test.mjs` | 14 | 职业三人组合解析 | 改 comps |
+| `pickrates.test.mjs` | 14 | 英雄选取率解析 | 改 pickrates |
+| `rankdist.test.mjs` | 15 | 段位分布 | 改 rankdist |
+| `rings.test.mjs` | 31 | 猜圈题库与判定 | 改 rings |
+| `rings-render.test.mjs` | 6 | 猜圈视图模型渲染字段 | 改 rings 渲染 |
+| `wheel.test.mjs` | 15 | 轮盘候选池/抽签/扇形几何 | 改 wheel |
+| `ringpick.test.mjs` | 14 | 速判题库/四选一几何/视口 | 改 ringpick |
+
+`tests/live.mjs` 是**联机**校验（真 Key 打真接口），**不是** `.test.mjs`，别放进上面的统计：
+
+```powershell
+$env:APEX_API_KEY="你的key"; node tests/live.mjs
+```
+
+**测试挂了怎么读**：先看断言里那句中文说明，基本都是"哪条产品规则被破了"，比堆栈有用。
+`sync.test.mjs` 失败会直接打印两份 core.js 的差异行号。
+
+---
+
+## 12. 红线清单（违反就会坏，编号便于引用）
+
+1. `miniprogram/utils/core.js` 与 `cloudfunctions/apex/core.js` **必须字节一致**，改一份原样复制另一份。
+2. 小程序端**不许**出现 API Key、32 位十六进制串、`ALS_API_KEY=` 赋值。
+3. 小程序端**不许**引用任何外部域名（图片/请求都不行）。
+4. 云函数**只能用 Node 内置模块** + `wx-server-sdk`（`~2.7.x`）；不许用全局 `fetch`。
+5. 云函数**任何**数据库/上游错误都要降级，不许把异常抛给前端。
+6. 不用 `wx.setStorage*`（`prefs.js` 例外），不许存用户数据。
+7. 不硬编码颜色（白色除外）；不加新字号档位；不小于 24rpx。
+8. 浅色主题必须覆盖深色的每一个变量；`color` 在 `.wrap` 上再声明一次。
+9. WXML 不写死中文；中英词表必须成对。
+10. 不编数据：取不到 → 留空/显示英文/整块隐藏，不许给 0、空数组、占位文案。
+11. 地图页四行顺序不写死在 WXML 里，由 viewmodel 决定。
+12. 不用 EA 的 logo、官方纯红、官方地图以外来源的地图照片；产品名不带 APEX。
+13. `pages/maps/` 没有自己的 wxss，改地图页样式 = 改 `app.wxss`（会波及其他页面）。
+14. `cloudfunctions/apex/` 现有代码是 **ES5 风格**（`var` + `function`）。别在里面混入 `?.`、`??`、顶层 await
+    之类的新语法：运行环境是 Node 16，风格统一比写起来顺手更重要。
+15. 快照 `*_data.js` 是**离线抓取的产物**，改它等于改产品口径，需要说明数据来源与日期。
+16. 新增云函数 action：先加进 `handler.js` 的 `ACTIONS`（或 `index.js` 的分支），**再加测试**。
+17. 新增页面：`app.json` 的 `pages` 顺序有意义（第一项是启动页），并同步 §5 的矩阵文档。
+18. 不许在页面 js 里写业务判断（放不进测试 = 下一轮必被改坏）。
+19. 广告位 ID 只能是 `adunit-` 开头；填错不崩，但会白占位置。
+20. 别删 `try/catch`——每一个都是为了"某个附加功能挂了不影响主功能"。
+
+---
+
+## 13. 上游的坑（实测结论，别再试一遍）
+
+来自 README 与代码注释，都是踩过的：
+
+| 接口 | 结论 |
+|---|---|
+| `/leaderboard`（完整 750 人名单） | ❌ `Unauthorized. You must be whitelisted`。放弃 |
+| 网页版 `/leaderboard`、`/live-ranked-leaderboards` | ❌ 403，是登录墙 |
+| 玩家近期对局 `/games` | ❌ 新 Key 无权限；旧 `history=1` 返回的是最后一次被追踪时的**陈旧数据**（实测 shroud 的 7 条全是 1881 天前） |
+| `/predator/history` | ❌ 返回的就是当前值，上游没有历史 → 涨幅只能自己存快照 |
+| 段位分布官方数据 | ❌ Respawn 不发布；网上百分比分母都是"被追踪玩家"，各站还对不上 |
+| `/algs/*` 的深层页面 | ❌ Cloudflare 人机校验，云函数拿不到 → 只能做离线快照 |
+| `/maprotation` | ✅ 每个模式只给 current + **一个** next |
+| `/bridge?player=` | ✅ 但 EA ID 不区分大小写且"游戏名"常查不到（用 EA 账号 ID） |
+| 网页 `/lib/php/rankdistrib.php` | ✅ 纯 JSON、无校验、~2.5KB，是少见的"能实时拿"的数据 |
+| overstat.gg（赛事） | ✅ 公开 JSON、免 Key、体积极小 |
+| ALGS 赛事总览页 | ✅ 可抓（robots `Allow: /`），其他页不行 |
+| `pickrates` 网页 | ✅ 可抓，但**解析失败必须整块隐藏**（结构一变就静默出错） |
+
+**通用教训**：上游改字段名是**真实发生过**的事（`arenas` 被废弃、`predator` 结构换过形态）。
+所以归一化必须写在云函数里、必须容错、必须有测试钉住返回形状。
+
+---
+
+## 14. 当前状态与技术债（诚实版）
+
+**已确认**
+
+- 线上已发布过（2026-10-09）。本地这份代码是 2026-10-26 的快照，**测试 600 条全绿**。
+- **Git 仓库已于 2026-10-26 建立**（分支 `main`，首次提交即本快照）。
+  在这之前该目录在 `D:\点餐` 仓库里是 `untracked`，所以**更早的历史无据可查**——
+  想找回更早的版本，只能看 `.backups/` 里的目录副本。
+- 没有构建步骤、没有 npm 依赖：**源码即产物**，开发者工具直接编译。
+  （`cloudfunctions/apex/package.json` 是唯一的 package.json，只声明 `wx-server-sdk`，云函数那边的事。）
+
+**不确定 / 需要找原作者确认**
+
+- 本地代码与线上版本是否一致（README 的「这次要做什么」一节写于上一轮，可能已完成）。
+- 云开发数据库里 5 个集合的当前数据量（`predator_snapshots` 是否够 20 小时以上历史）。
+
+**已知技术债**
+
+| 债 | 影响 | 建议 |
+|---|---|---|
+| 仓库还没推到远端 | 两人仍只能靠 zip 交换，必然分叉 | **建私有库推上去 + 加协作者**（见 §15） |
+| `core.js` 双份手工同步 | 忘同步就两端行为分叉 | 已有测试拦；长期可考虑构建期复制 |
+| 地图页样式混在 `app.wxss`（49KB） | 改地图页会影响全站 | 若要重构，先跑 `theme/static/page` 三个测试 |
+| 四个页面共用一个广告位 ID | 分不出各页收益 | 后台建 3~4 个独立位，改 `AD_UNITS` 即可 |
+| 职业选手数据靠人工/离线识别 | 数据会过期（当前 2026-10-26） | 需要周期性重跑 `直播识别/` 的流程（**不在本包**） |
+| 档位/组件规范分散在 3 处文档 | 新人容易只看到一处 | 以 `app.wxss` 令牌层为准 |
+
+**文档与代码已不同步的地方**（别被误导）
+
+1. `docs/apex-miniapp-ui/SKILL.md` 说"三个 tab / 三个页面" → 实际 **4 个 tab、7 个页面**。
+2. 同文件说"全项目不使用本地存储" → 2026-10 已收窄（见 §9）。
+3. 同文件说"24 个测试文件" → 实际 **30 个 `.test.mjs`**。
+4. `README.md` 目录树里云函数只列了 4 个文件 → 实际 **15 个模块**。
+5. `README.md` 说"测试 594 条"、更早处说"413 条" → 实测 **600 条断言**（数字随版本变，别当契约）。
+6. `README.md` 提到 `apex-web/` 也各存一份 `core.js`/`handler.js` → **本包不含网页版**；
+   若你在本包改 `core.js`，网页版仓库需要另行同步（那是另一个项目的 sync 测试管的）。
+
+---
+
+## 15. 协作建议（两个人 + 两台 AI 同时改）
+
+**第一件事：以 Git 仓库为唯一基线**
+
+仓库已于 2026-10-26 在本机建好（分支 `main`，首次提交就是 §14 提到的那份快照）。
+剩下要做的只有一件事：**把它推到远端，让第二个人 clone 而不是收 zip**。
+
+```powershell
+# 仓库所有者（你）：建一个「私有」仓库并推上去（Gitee / GitHub 都行）
+git remote add origin <仓库地址>
+git push -u origin main
+# 然后把对方加成协作者：
+#   Gitee  → 仓库 → 管理 → 仓库成员管理 → 添加（开发者权限）
+#   GitHub → Settings → Collaborators → Add people
+```
+
+```powershell
+# 协作者（朋友）：clone，不要 git init
+git clone <仓库地址> apex-miniapp
+cd apex-miniapp
+node tests/core.test.mjs        # 先确认基线是绿的
+```
+
+**为什么必须这样**：zip 是单向快照，没有任何回传通道；两个人在各自的 zip 目录里 `git init`，
+会得到**两个没有共同祖先的仓库**，将来想合并只能人工搬文件。
+如果你已经收到过 zip 并建了仓库——删掉那份 `.git`（`rm -rf .git`）再 clone，别想"两边拼一下"。
+
+**日常同步纪律**（三个人都要守）
+
+1. 开工前 `git pull --rebase`；收工前 commit + push。**不要攒一周再推**。
+2. 一次提交只包含一件事；提交信息写"为什么"（本项目文档风格就是记录取舍）。
+3. 改完跑相关测试再提交；全量 30 个文件约 1 分钟。
+4. 冲突不要"用我的覆盖"：`core.js` 两份副本、`i18n.js` 成对词条这类冲突，逐行看，改完立刻跑 `sync` / `i18n` 测试。
+
+**本机差异怎么处理（必读，否则每次 `git status` 都是脏的）**
+
+协作者必须用自己的 AppID 和云环境才能跑起来，而这两处**在受跟踪的文件里**：
+`project.config.json` 的 `appid`、`miniprogram/app.js` 的 `CLOUD_ENV`。
+
+推荐做法（不提交本机差异，也不影响别人）：
+
+```powershell
+# 让 git 不跟踪你本机对这两个文件的改动
+git update-index --skip-worktree project.config.json miniprogram/app.js
+# 需要恢复跟踪（例如别人真的改了这两个文件、你要拉下来）：
+git update-index --no-skip-worktree project.config.json miniprogram/app.js
+```
+
+> ⚠️ 代价：`skip-worktree` 期间对这两个文件的 `pull` 会被挡住。真的有人改了它们，先 `--no-skip-worktree`、
+> `git checkout --` 拿远端版本，改回自己的 AppID，再重新 skip。
+> 更省事的替代：**协作者干脆别用自己 AppID**，两人共用一个测试号跑；上传/提审只由一个人做。
+
+**发布权限归一个人**（这是最容易出事的地方）
+
+- **云函数**：线上只有一个版本，谁后部署谁生效，且没有回滚记录 → **只让一个人部署**。
+- **小程序代码**：多人上传会互相覆盖"开发版" → **只让一个人上传/提审**。
+- 两人改同一份代码时，先 push 到 `main`（或分支合并），**由发布者从他的工作区上传**，不要各自上传。
+
+**按文件分工最省事**（冲突面从小到大）
+
+| 区域 | 谁改 | 冲突风险 |
+|---|---|---|
+| `app.wxss` 令牌层 | **同一个人**独占 | 极高：全站共用，两人同时改必冲突 |
+| `utils/i18n.js` | 同一个人独占（每条文案都要成对加两条） | 高 |
+| `utils/core.js` ↔ `cloudfunctions/apex/core.js` | 一次改动必须同一人做完两边 | 中（有测试拦） |
+| 单个页面目录（js/wxml/wxss） | 可以一人一个页面 | 低 |
+| `cloudfunctions/apex/*.js`（除 core.js） | 一人一个模块 | 低 |
+| `tests/*.test.mjs` | 谁改功能谁加测试；改别人的测试要说明 | 低 |
+| `utils/*_data.js` 快照 | 更新数据的人独占 | 低 |
+
+**建议的常规流程**
+
+1. `git pull` → 跑 3 个核心测试确认基线绿（`core` / `static` / `page`）。
+2. 小步改：一次只动一个功能面，改完立刻跑相关测试。
+3. 改完跑全量（30 个文件，约 1 分钟），全绿再 commit。
+4. 提交信息写"为什么"（这个项目的文档风格就是记录取舍，别只写"改样式"）。
+5. 发版：开发者工具「上传」→ 小程序后台「版本管理」→ 提交审核。
+
+**发布注意**
+
+- 小程序**一旦发布，改一行都要重新提审**。所以凡是"抗上游变化"的逻辑（字段归一化、译名表）
+  一律放云函数；**改云函数不需要提审**，这是本项目最重要的运维优势，别破坏它。
+- 云函数上传时必须选「**上传并部署：云端安装依赖**」，否则 `wx-server-sdk` 装不上
+  （代码有 try/catch 兜底，但涨幅/追踪会缺）。云函数超时需设为 **20 秒**。
+- 数据库集合要手动建（5 个，见 §4）。忘了建不崩，只是对应功能缺失。
+
+**接手时可以问原作者的 3 个问题**（这些从代码里看不出来）
+
+1. 线上版本号和本地代码是否一致？最后一次发版是什么时候？
+2. 云开发环境里 5 个集合现状（哪些有数据、`predator_snapshots` 存了多久）？
+3. `ALS_API_KEY` 由谁持有、能不能给你一个（或让你用同一个 Key）？
+
+---
+
+## 16. 术语表
+
+| 词 | 含义 |
+|---|---|
+| 猎杀线 / predator | 各平台大师段位进入"猎杀者"所需的最低 RP（上游只给第 750 名那个数） |
+| 轮换 / rotation | 地图按模式轮着打；15 分钟~4.5 小时一场 |
+| 模式 | 四个：`pubs`（匹配）/ `ranked`（排位）/ `wildcard`（外卡）/ `mixtape`（轮换，上游旧字段名 `ltm`）。界面顺序是 匹配 → 排位 → 外卡 → 轮换 |
+| 据点 | 轮换模式用的小地图（碎片、骷髅镇、纪念碑…），官方地图页只有六张大图 |
+| 圈 / ring | 缩圈；坐标用 **16384** 为边长基准的地图单位 |
+| 内切 | 下一个圈的圆心距恰等于 `R1 - R2`（260 局全部如此），速判四选项都摆在这条轨迹上 |
+| 速判 / ringpick | 看第一圈猜下一圈圆心方向，四选一，10 秒一题 |
+| 猜圈 / ringguessr | 给前几圈、拖地图猜下一圈圆心，8 题 20 秒 |
+| 快照 / snapshot | 离线抓下来的数据文件；页面要标明"更新于" |
+| 基准 / basis | 20~28 小时前那条快照，用来算"较昨日同期" |
+| `T.xxx` | i18n 词典条目，`{{T.xxx}}` 在 WXML 里取 |
+| `.wrap` / `.wrap.theme-light` | 页面根容器；浅色主题挂在这个类上 |
+| Chrome | 原生的导航栏 / tabBar / 窗口底色（WXSS 管不到，走 `theme.js`） |
+
+---
+
+## 附：一页速查「要改 X → 动 Y → 跑 Z」
+
+| 想做的事 | 改哪里 | 必须跑 |
+|---|---|---|
+| 改地图页视觉 | `app.wxss`（+ `pages/maps/maps.wxml` 结构） | theme, static, page |
+| 加一句文案 | `utils/i18n.js` 的 `DICT.zh` **和** `DICT.en` | i18n, page |
+| 加一张地图的中文名 | `utils/core.js` 的 `MAP_CN` + 两份同步 | i18n, sync, core |
+| 改四行顺序/卡片字段 | `utils/viewmodel.js` + `maps.wxml` | viewmodel, page |
+| 改倒计时/差额算法 | `utils/core.js` | core, viewmodel, page |
+| 换/加数据源（上游接口） | `cloudfunctions/apex/handler.js` 的 `UPSTREAM_PATH`/`ACTIONS` | handler, sync |
+| 加新的云端 action | `index.js` 分支 或 `handler.js` 的 `ACTIONS` | handler |
+| 改猎杀涨幅窗口 | `cloudfunctions/apex/snapshot.js` | snapshot, predgap |
+| 改轮盘候选/几何 | `utils/wheel_data.js` | wheel, page |
+| 改猜圈题库 | `utils/match_rings_data.js` | rings, page |
+| 改速判题库 | `utils/rings_data.js` / `map_ends_data.js` | ringpick, page |
+| 开/关/换广告位 | `utils/ad.js` | ad |
+| 改主题令牌 | `app.wxss` 顶部（两套都要改） | theme, static |
+| 换赛季（赛季结束时间） | **云开发控制台** `site_config` 集合（不用发版） | config 相关（无测试，手测） |
+| 换战队名单 | `cloudfunctions/apex/curated_roster*.json` | teams |

@@ -1,0 +1,42 @@
+{
+  "_note": "战队专区「高置信子集」v1。uid 通过 /bridge 按名字解析，且返回名与 IGN/队名强匹配（精确同名、队名前缀、或按 aka 精确命中）。其余选手（短名重名 / 改名频繁 / 未查到）暂不上，待人工核对 uid。解析时间 2026-10-10。",
+  "resolvedAt": "2026-10-10",
+  "season": "2026 Split 2",
+  "region": "APAC South",
+  "teams": [
+    { "id": "VKG", "name": "VKG", "players": [
+      { "ign": "Kasssa", "name": "KASSA", "uid": "1014037326221", "input": "KBM", "nation": "中国大陆" },
+      { "ign": "LqDuD", "name": "LqDuD", "uid": "1011176151236", "sub": true, "nation": "中国大陆" }
+    ]},
+    { "id": "DCG", "name": "DCG", "players": [
+      { "ign": "Lu1SaN", "name": "DCG_Lu1SaN", "uid": "1009092395168", "nation": "中国台湾" }
+    ]},
+    { "id": "saweiqi", "name": "saweiqi", "players": [
+      { "ign": "refra1nnn", "name": "refra1n.", "uid": "1008718573540", "input": "KBM", "nation": "中国香港" },
+      { "ign": "GuoZi", "name": "GUOZI", "uid": "1014281100318", "input": "KBM", "nation": "中国大陆" }
+    ]},
+    { "id": "TEC", "name": "TEC", "players": [
+      { "ign": "xiaolin", "name": "xiaolin", "uid": "2551007183", "input": "controller", "nation": "中国台湾" }
+    ]},
+    { "id": "TECAcademy", "name": "TEC Academy", "players": [
+      { "ign": "Wuzi", "name": "wuzi", "uid": "2388842201", "sub": true, "input": "KBM", "nation": "中国大陆" }
+    ]},
+    { "id": "Kirisame", "name": "Kirisame", "players": [
+      { "ign": "XoyoBda", "name": "KRS Xoyo", "uid": "1010128111744", "nation": "马来西亚" }
+    ]},
+    { "id": "TuBoShu", "name": "TuBoShu", "players": [
+      { "ign": "KingMSG", "name": "LitteKingMSG", "uid": "1008894177208", "input": "KBM", "nation": "中国香港" },
+      { "ign": "Rchwert", "name": "CLS_wert6031", "uid": "1011176387696", "input": "controller" },
+      { "ign": "Tu1rbo", "name": "Tu1rbo", "uid": "2296411032", "input": "controller" }
+    ]},
+    { "id": "ARAM", "name": "ARAM", "players": [
+      { "ign": "Chisu", "name": "chisu", "uid": "1010522157616", "input": "KBM", "nation": "中国台湾" }
+    ]},
+    { "id": "GoaT", "name": "GoaT", "players": [
+      { "ign": "OWO", "name": "ÕwÕ", "uid": "2837664122", "nation": "中国台湾" },
+      { "ign": "AceGod", "name": "Hinson", "uid": "1010543345281", "nation": "中国香港" },
+      { "ign": "thurston", "name": "thurston", "uid": "2838726934", "nation": "中国香港" }
+    ]}
+  ],
+  "_pending": "待核对（短名重名/改名/未查到）：JR、QQ、xd、Xzz、XX、g8、Menino、Roieee、Pite、Noname、WenXx、CrazyCong、ShaoJie、Eastyy、BJJS_012、Bieyun、ckkongbai、BoLin、Allmyfaul、qiuzi、Ggod、FengchunOvO、YY、xKenN、Cumulonimbus、N1ng、跳跳loveJK、Jacky1、Normal、SongYou、yoafter、Caigou"
+}

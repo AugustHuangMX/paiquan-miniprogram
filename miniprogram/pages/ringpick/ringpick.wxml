@@ -1,0 +1,74 @@
+<!--
+  圈型速判（四选一）。玩法与几何依据见 utils/ringpick.js 顶部。
+
+  版面（一屏）：
+      计分条 → 时间条 → 地图（白圈 + 四个候选字母）→ 结果条 → 下一题 / 再来一局
+
+  三条不能动的约定：
+    · 白圈是第一个安全区圈；红圈（真实的下一个圈）**答完才出现**，否则就是送答案；
+    · 四个字母点都在白圈内、互不相挨（间距是 utils/ringpick.js 按 70° 算的）；
+    · wx:if / wx:for 不写在同一个标签上；不用 wx:else（预览器会两个分支都渲染）。
+-->
+<view class="wrap theme-{{theme}}" data-lang="{{lang}}">
+
+  <view wx:if="{{noData}}" class="note">{{T.rpNoData}}</view>
+
+  <block wx:else>
+    <!-- 计分条 -->
+    <view class="qbar">
+      <view class="qbar-i">
+        <text class="qbar-k">{{T.rpScore}}</text>
+        <text class="qbar-v">{{score}}</text>
+      </view>
+      <view class="qbar-i">
+        <text class="qbar-k">{{T.rpBest}}</text>
+        <text class="qbar-v">{{best}}</text>
+      </view>
+      <view class="qbar-i qbar-wide">
+        <text class="qbar-k">{{roundText}}</text>
+        <text class="qbar-m">{{mapName}}</text>
+      </view>
+    </view>
+
+    <!-- 10 秒一题：进度条比"剩余 8s"的小字更直观，也不额外占地 -->
+    <view class="qtimer">
+      <view class="qtimer-fill" style="width:{{leftPct}}%"></view>
+    </view>
+
+    <!-- 题干放在地图**外面**：叠在地图上的话，贴边的候选点会被它挡住、点不到 -->
+    <view wx:if="{{phase === 'guess'}}" class="qask">
+      <text class="qask-t">{{T.rpAsk}}</text>
+      <text class="qask-s">{{T.rpLeft}} {{leftSec}}s</text>
+    </view>
+
+    <!-- 地图：底图是全域高清图（640×640），不放大，避免糊 -->
+    <view class="qmap">
+      <image class="qmap-img" src="{{image}}" mode="aspectFill" style="{{world}}"></image>
+
+      <!-- 第一个圈（白） -->
+      <view class="qring" style="{{ring.style}}"></view>
+
+      <!-- 真实的下一个圈（红）—— 只有答完才渲染 -->
+      <view wx:if="{{marks}}" class="qanswer" style="{{marks}}"></view>
+
+      <!-- 四个候选圈心：字母是**不靠颜色**的语义，答完再用描边区分对错 -->
+      <view wx:for="{{options}}" wx:key="label" data-i="{{index}}" bindtap="onPick"
+            class="qopt {{item.cls}}" style="{{item.style}}">
+        <text class="qopt-t">{{item.label}}</text>
+      </view>
+    </view>
+
+    <!-- 结果 + 下一步（拇指落点在底部） -->
+    <view class="qfoot">
+      <view wx:if="{{result}}" class="qres {{result.hit ? 'qres-ok' : 'qres-no'}}">
+        <text class="qres-t">{{result.title}}</text>
+        <text class="qres-m">{{result.message}}</text>
+      </view>
+      <view wx:if="{{done}}" class="qsm">{{summary}}</view>
+      <view wx:if="{{phase === 'result' && !done}}" class="qbig qbig-on" bindtap="onNext">{{T.rpNext}}</view>
+      <view wx:if="{{done}}" class="qbig qbig-on" bindtap="onAgain">{{T.rpAgain}}</view>
+    </view>
+
+    <view class="note">{{T.rpRules}}</view>
+  </block>
+</view>

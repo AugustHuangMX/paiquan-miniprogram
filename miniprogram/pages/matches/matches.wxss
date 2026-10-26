@@ -1,0 +1,312 @@
+/* 比赛页专属样式（ALGS 职业赛场）。
+   ⚠️ 为什么单独一个文件：小程序 WXSS 是**页面级**的，predator.wxss 里的规则
+   在 matches 页不生效 —— 第 17 轮拆页面时 WXML 搬走、CSS 没搬，
+   结果 ALGS 的战队名次挤成「1Team RRQ423」。跨页共用的规则请放 app.wxss。 */
+
+/* ---------- 排位专区页：ALGS 职业赛场 + 本赛季段位分布 ----------
+   放在页面级 WXSS 而不是 app.wxss：这些类只有这一页用到。
+
+   数值全部走 app.wxss 里的令牌层（项目设计文档 docs/design/README.md）：
+     · 字号只用 7 档 --fs-display/title/head/section/body/sub/min，
+       **--fs-min（24rpx）是绝对下限**；
+     · 间距走 --sp-1..--sp-16（4rpx 网格）；圆角走 --r-sm/md/lg/xl/full；
+     · 颜色只写 var(--x)；
+     · 只用 class 选择器：**`:nth-child()` 这类带参数的伪类小程序不支持**，
+       所以"前三名加重"由视图模型给 top3 标记，这里按 class 上色。
+   （2026-10-16 修：上一版写过 20/21/22/32rpx、:nth-child 和写死的 rpx 间距，
+     都超出规范；现在一律走令牌。） */
+
+/* ================= ALGS 职业赛场 ================= */
+/* 刻意和「排位专区」共用一套视觉（头像卡 / 名字 + 条形 + 百分比）：
+   两块回答的是同一类问题 ——"谁被选得多"—— 区别只在数据口径。
+   所以口径说明写在各自的标题旁边，而不是靠配色区分。 */
+.algs-head {
+  display: flex;
+  align-items: flex-start;
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+  margin-top: var(--sp-1);
+}
+.algs-head-l { flex: 1 1 auto; min-width: 0; }
+.algs-name { font-size: var(--fs-head); font-weight: var(--fw-bold); color: var(--ink); display: block; line-height: 1.3; }
+.algs-sub { font-size: var(--fs-min); color: var(--ink3); display: block; margin-top: var(--sp-1); line-height: 1.5; }
+.algs-meta { display: flex; margin-top: var(--sp-2); }
+.algs-meta-i { font-size: var(--fs-min); color: var(--ink2); margin-right: var(--sp-4); }
+.algs-head-r { flex: 0 0 auto; text-align: right; margin-left: var(--sp-4); }
+.algs-champ-k { font-size: var(--fs-min); color: var(--ink3); display: block; line-height: 1.5; }
+.algs-champ-v { font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--accent-ink); display: block; line-height: 1.3; }
+.algs-maps { font-size: var(--fs-min); color: var(--ink3); margin-top: var(--sp-3); line-height: 1.6; }
+/* 名次口径说明：单独一行，不跟标题挤在同一个 flex 行里（挤进去会把标题压成两行） */
+.algs-note { font-size: var(--fs-min); color: var(--ink3); line-height: 1.6; margin: 0 0 var(--sp-3); }
+
+/* 战队排名行：名次 / 战队 / 胜场 / 积分。数字用等宽字形，纵向才对得齐。
+   （名次与积分是固定列宽，用 rpx 写死才对齐；间距类一律用 --sp-*） */
+.srow { display: flex; align-items: center; padding: var(--sp-2) 0; }
+.srow-rank { width: 48rpx; flex: 0 0 auto; font-size: var(--fs-min); font-weight: var(--fw-bold); color: var(--ink3); font-variant-numeric: tabular-nums; }
+.srow-team { flex: 1 1 auto; min-width: 0; font-size: var(--fs-sub); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srow-wins { flex: 0 0 auto; font-size: var(--fs-min); color: var(--ink3); margin: 0 var(--sp-3); }
+.srow-score { flex: 0 0 auto; width: 112rpx; text-align: right; font-size: var(--fs-sub); font-weight: var(--fw-bold); color: var(--ink); font-variant-numeric: tabular-nums; }
+/* 前三名的名次数字加重（标记来自视图模型的 top3，不用 :nth-child） */
+.srow-top3 .srow-rank { color: var(--accent-ink); }
+
+/* 英雄卡：**自己一份 .acell，不复用排位专区的 .hcell**。踩过两次：
+     1) 复用 .hcell 时想排 5 格排成 4 格（它的 flex-basis 是 0、靠 flex-grow 均分，
+        每格还带 border，5 格加起来超 100%）；
+     2) 改成 .agrid .hcell{flex:0 0 23%} 也不稳 —— .hcell 是别处也在用的公共类，
+        那边一改这边就从 4 格变 3 格。
+   结论：跨板块复用样式类要付"互相牵制"的代价，尺寸敏感的卡片宁可自己写一份。
+   一行 4 格（23% × 4 + gap），12 个英雄正好 3 行。 */
+.agrid { display: flex; flex-wrap: wrap; gap: var(--sp-3); padding-top: var(--sp-2); }
+.acell { flex: 0 0 23%; min-width: 0; text-align: center; }
+.acell-pic { width: 84rpx; height: 84rpx; margin: 0 auto var(--sp-2); }
+.acell-ic { width: 84rpx; height: 84rpx; border-radius: var(--r-md); }
+.acell-name {
+  display: block;
+  font-size: var(--fs-min);
+  color: var(--ink2);
+  /* 行高给到 1.6 再留 margin：中文字形比拉丁字高，行高 1.2~1.3 时
+     下一行的进度条会压到字脚上，看着像删除线。 */
+  line-height: 1.6;
+  margin-bottom: var(--sp-1);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.acell-bar { height: 8rpx; background: var(--track); border-radius: var(--r-full); margin: 0 0 var(--sp-2); overflow: hidden; }
+.acell-fill { height: 100%; background: var(--accent); border-radius: var(--r-full); }
+.acell-pct { font-size: var(--fs-min); font-weight: var(--fw-bold); color: var(--ink2); font-variant-numeric: tabular-nums; }
+
+/* ================= 比赛专区 · 下一场比赛（2026-10-18） =================
+   用户要求：一打开 = 未来最近一场比赛的分组 + 时间安排；没排期只显示分组；
+   点队伍看队员。
+
+   排版取舍（按 1288rpx 可视高算过）：
+     · 赛程用「一天一行 + 时间场次并排」而不是十行大列表 —— 10 场 × 64rpx
+       就是 640rpx，会把分组挤出第一屏；现在一天约 80rpx，四天约 320rpx。
+     · 分组一次只展开一组（40 支队全铺开没法读），但组标签上写着队数，
+       "怎么分的、每组分几队"一打开就看得到。
+     · 所有尺寸/颜色走 app.wxss 的令牌层；热区：组标签 80rpx、队伍行 88rpx。 */
+
+.nx-hero {
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+}
+.nx-hero-top { display: flex; align-items: flex-start; }
+.nx-hero-l { flex: 1 1 auto; min-width: 0; }
+.nx-event { display: block; font-size: var(--fs-head); font-weight: var(--fw-bold); color: var(--ink); line-height: 1.3; }
+.nx-sub { display: block; font-size: var(--fs-min); color: var(--ink3); line-height: 1.5; margin-top: var(--sp-1); }
+/* 倒计时胶囊：不是按钮，所以允许低于 80rpx 的触控高度（纯展示） */
+.nx-pill {
+  flex: 0 0 auto;
+  margin-left: var(--sp-3);
+  padding: 0 var(--sp-3);
+  height: 44rpx;
+  line-height: 44rpx;
+  border-radius: var(--r-full);
+  font-size: var(--fs-min);
+  font-weight: var(--fw-bold);
+  color: var(--accent-ink);
+  background: var(--glass);
+}
+/* 已经开赛/结束时不再用强调色 —— 那不是"值得兴奋"的状态 */
+.nx-pill-off { color: var(--ink3); }
+
+.nx-next { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1rpx solid var(--line); }
+.nx-next-k { display: block; font-size: var(--fs-min); color: var(--ink3); line-height: 1.5; }
+.nx-next-time {
+  display: block;
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.nx-next-name { display: block; font-size: var(--fs-body); color: var(--ink2); line-height: 1.4; }
+.nx-meta { font-size: var(--fs-min); color: var(--ink3); margin-top: var(--sp-2); line-height: 1.5; }
+
+/* 赛制：官方赛事页 info-banner 的转写。默认只露一行摘要，点一下展开 4 条晋级路径。
+   放成卡片而不是一段灰字：它是"接下来会发生什么"的规则，不是脚注。 */
+.nx-fmt {
+  margin-top: var(--sp-3);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3) var(--sp-4);
+}
+.nx-fmt-hover { background: var(--raised); }
+.nx-fmt-h { display: flex; align-items: center; }
+.nx-fmt-t { flex: 1 1 auto; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--ink); line-height: 1.5; }
+.nx-fmt-x { flex: 0 0 auto; font-size: var(--fs-min); color: var(--ink3); margin-left: var(--sp-2); }
+.nx-fmt-s { display: block; font-size: var(--fs-min); color: var(--ink2); line-height: 1.6; margin-top: var(--sp-1); }
+.nx-fmt-row { display: flex; margin-top: var(--sp-2); }
+.nx-fmt-k { flex: 0 0 108rpx; font-size: var(--fs-min); font-weight: var(--fw-bold); color: var(--ink2); line-height: 1.6; }
+.nx-fmt-v { flex: 1 1 auto; min-width: 0; font-size: var(--fs-min); color: var(--ink2); line-height: 1.6; }
+
+/* 当前组的出场安排（换组就换内容）：一行小字，不用再加一块卡片 */
+.nx-gsched { font-size: var(--fs-min); color: var(--ink3); line-height: 1.6; margin: var(--sp-1) 0 0; }
+
+/* 赛程：一场一格、两列排（日期 + 时间 + 场次）。
+   为什么不是"一天一行"：右列三个场次在 686rpx 宽里必然折成两行，
+   四天就是 8 行 ≈ 500rpx，会把「分组」挤出第一屏（实测 528rpx）。
+   现在 10 场 = 5 行 × 56rpx ≈ 280rpx，第一屏能看到分组标签。 */
+.nx-slots { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sp-2); }
+.nx-slot {
+  /* ⚠️ 不要写 calc(50% - var(--sp-1))：50%+50%+gap 正好等于 100%，
+     浏览器/小程序各自的小数取整会让某几行多出 0.1px 而换行（实测英文下参差不齐）。
+     48% 留出余量，再用 space-between 把两列推齐。 */
+  flex: 0 0 48%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: baseline;
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-3);
+}
+.nx-slot-t {
+  flex: 0 0 auto;
+  font-size: var(--fs-min);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  margin-right: var(--sp-2);
+  white-space: nowrap;
+}
+.nx-slot-n { flex: 1 1 auto; min-width: 0; font-size: var(--fs-min); color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.nx-note { font-size: var(--fs-min); color: var(--ink3); line-height: 1.6; margin: var(--sp-2) 0; }
+
+/* 分组切换：四等分，选中用强调色填充（白字在其上 4.85:1）。
+   高度 80rpx 是触控下限。 */
+.nx-tabs {
+  display: flex;
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--sp-1);
+  margin-top: var(--sp-2);
+}
+.nx-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 80rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+}
+.nx-tab-k { font-size: var(--fs-sub); font-weight: var(--fw-bold); color: var(--ink2); line-height: 1.2; }
+.nx-tab-n { font-size: var(--fs-min); color: var(--ink3); line-height: 1.2; }
+.nx-tab-on { background: var(--accent); }
+.nx-tab-on .nx-tab-k, .nx-tab-on .nx-tab-n { color: #ffffff; }
+
+/* 队伍砖：两列；长队名（ShopifyRebellion / TitanEsportsClub）省略号截断，
+   队员数常驻右侧。行高 88rpx ≥ 80rpx 触控下限。 */
+.nx-grid { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sp-2); margin-top: var(--sp-3); }
+.nx-team {
+  /* 同上：用 48% 而不是 calc(50% - gap) —— 两列在英文/长队名下也不会错行 */
+  flex: 0 0 48%;
+  box-sizing: border-box;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-md);
+  padding: 0 var(--sp-3);
+}
+.nx-team-n {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* 队员数挪到弹层里了（这里改成「›」表示可点）：26rpx 下
+     "LawsonTicketXone / GaiminGladiators" 才放得下。 */
+  font-size: var(--fs-sub);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 队标：44rpx 见方。源图是 64×64 透明 PNG（tools/build_team_icons.mjs 生成），
+   aspectFit 不裁切，长方形队标也不会被切掉两头。 */
+.nx-team-ic {
+  flex: 0 0 auto;
+  width: 36rpx;
+  height: 36rpx;
+  margin-right: var(--sp-1);
+}
+/* 队伍砖右侧的「›」：只表示"点得开"，不承载信息 */
+.nx-team-x { flex: 0 0 auto; margin-left: var(--sp-1); font-size: var(--fs-body); line-height: 1; color: var(--ink3); }
+.nx-team-hover { background: var(--raised); }
+
+/* 队员弹层：底部上滑。遮罩用半透明黑（和猜圈的固定条同一做法），
+   弹层本身用卡片色 —— 深/浅两套主题都不用额外改。 */
+.nx-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+}
+.nx-sheet {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--card);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: var(--sp-6);
+  padding-bottom: calc(var(--sp-6) + env(safe-area-inset-bottom));
+  animation: nx-up 0.18s ease-out;
+}
+@keyframes nx-up {
+  from { transform: translateY(48rpx); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.nx-sheet-h { display: flex; align-items: flex-start; margin-bottom: var(--sp-2); }
+.nx-sheet-hl { flex: 1 1 auto; min-width: 0; }
+.nx-sheet-title { display: flex; align-items: center; }
+.nx-sheet-ic { flex: 0 0 auto; width: 72rpx; height: 72rpx; margin-right: var(--sp-3); }
+.nx-sheet-txt { flex: 1 1 auto; min-width: 0; }
+.nx-sheet-name { display: block; font-size: var(--fs-head); font-weight: var(--fw-bold); color: var(--ink); line-height: 1.3; }
+.nx-sheet-sub { display: block; font-size: var(--fs-min); color: var(--ink3); line-height: 1.5; margin-top: var(--sp-1); }
+.nx-sheet-x {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-width: 80rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  padding: 0 var(--sp-2);
+  margin-left: var(--sp-3);
+  font-size: var(--fs-min);
+  color: var(--ink2);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-full);
+}
+.nx-player {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--sp-3) 0;
+  border-bottom: 1rpx solid var(--line);
+}
+.nx-player-n {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: var(--fs-body);
+  color: var(--ink);
+  /* 国籍改成全称后（"中国台湾" / "United States"），长名字 + 长国籍可能挤出去：
+     名字让位、省略号截断，国籍那侧不缩 */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.nx-player-m { flex: 0 0 auto; font-size: var(--fs-min); color: var(--ink3); margin-left: var(--sp-3); }

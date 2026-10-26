@@ -1,0 +1,24 @@
+<svg id="icon" xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="34%" r="76%">
+      <stop offset="0%" stop-color="#2a1519"/>
+      <stop offset="52%" stop-color="#15181e"/>
+      <stop offset="100%" stop-color="#0a0c10"/>
+    </radialGradient>
+    <linearGradient id="mk" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0%" stop-color="#ff5257"/>
+      <stop offset="55%" stop-color="#e0353a"/>
+      <stop offset="100%" stop-color="#b7232a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景：整块铺满，圆形裁切也不露边 -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- 轮换意象：顶部一段弧 + 顺时针箭头（箭头按弧末端切线方向算，否则会歪） -->
+  <path d="M 92 196 A 175 175 0 0 1 420 196" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="17" stroke-linecap="round"/>
+  <path d="M 428.9 220.4 L 403.8 195.5 L 432.0 185.3 Z" fill="#ffffff" fill-opacity="0.5"/>
+
+  <!-- 主体：锐角 A -->
+  <path d="M 256 132 L 382 384 L 292 384 L 256 252 L 220 384 L 130 384 Z" fill="url(#mk)"/>
+</svg>

@@ -1,0 +1,733 @@
+/**
+ * 中英文两套文案 + 语言开关。
+ *
+ * 设计原则：
+ *   1. **不动 core.js** —— 那份与网页版逐字节共享（apex-web/tests/sync.test.mjs 会校验），
+ *      改它等于连带改网页版。所以 i18n 全部放在小程序自己这一层。
+ *   2. **拿不到译文时退回中文，绝不显示空白或 key** —— 和全项目"不给假数据"一个口径。
+ *   3. 所有接受 lang 的函数，**默认值都是 "zh"** —— 这样网页版/云函数/老测试不传 lang
+ *      时行为完全不变。
+ *
+ * 界面用法：页面把 `T(lang)` 整个放进 data，WXML 里写 {{T.xxx}}。
+ */
+
+var prefs = require("./prefs.js");
+
+var LANG_KEY = "ui_lang";
+var LANGS = ["zh", "en"];
+
+/* ============================================================
+   静态文案
+   ============================================================ */
+
+var DICT = {
+  zh: {
+    // —— 语言开关 ——
+    langLabel: "语言",
+    // —— 通用 ——
+    query: "查询",
+    querying: "查询中…",
+    currentRank: "当前段位",
+    rankScore: "排位分数",
+    predatorRank: "猎杀榜排名",
+    notRanked: "未定级 / 无排位数据",
+    notInLadder: "未进猎杀榜",
+    unknown: "未知",
+    loading: "正在获取数据…",
+    // —— 地图页 ——
+    mapsTitle: "当前地图轮换",
+    pubsHiddenHint: "匹配模式默认收起，点左上角 ⚙ 设置可以打开。",
+    pubsHintHide: "不再显示",
+    pickTitle: "展示哪些模式",
+    pickHint: "至少留一个",
+    pickEntry: "设置",
+    panelLang: "语言",
+    panelTheme: "主题",
+    modePubsShort: "匹配",
+    modeRankedShort: "排位",
+    schedToday: "今天",
+    schedTomorrow: "明天",
+    schedDayAfter: "后天",
+    schedMore: "展开接下来 24 小时",
+    schedLess: "收起",
+    schedUnknownMap: "待记录",
+    schedNote: "玩法按「子弹时间 → 团队死斗 → 控制」三场一循环外推。地图是后台一场一场记下来的，还没记到的显示「待记录」—— 不编。",
+    evtControl: "控制",
+    evtTdm: "团队死斗",
+    evtGunRun: "子弹时间",
+    themeDark: "深色",
+    themeLight: "浅色",
+    navMaps: "当前地图轮换",
+    navPredator: "排位专区",
+    navMatches: "比赛",
+    navGames: "小游戏",
+    navStats: "玩家战绩",
+    tabMaps: "地图",
+    tabPredator: "排位专区",
+    tabMatches: "比赛",
+    // 第 4 个 tab 2026-10 从「猜圈」扩成「小游戏」：猜圈练习和轮盘都收在这个分类下。
+    tabGames: "小游戏",
+    rotateIn: "距轮换",
+    thisRound: "本场",
+    rotatingNow: "轮换中…",
+    modeOff: "当前未开启",
+    modeOffTip: "该模式此刻不在轮换中，开启后这里会自动显示。",
+    nextUp: "接着轮换",
+    unknownKeysPre: "数据源出现了没见过的模式字段：",
+    unknownKeysPost: "。如果有模式显示「当前未开启」但你游戏里确实开着，请把这句话告诉维护者。",
+    // —— 猎杀榜 ——
+    predTitle: "各平台猎杀分数线",
+    predUnit: "猎杀",
+    // —— 排位专区（职业选手排位数据，来自直播回放离线识别）——
+    proSearch: "搜索选手",
+  proClear: "清空",
+  proMore: "展开全部，还有",
+  proCollapse: "收起",
+  proTitle: "职业选手数据",
+    proAll: "综合",
+    proAllNote: "把各位选手的次数加总，用来看整体倾向。",
+    proHeroes: "英雄选取",
+    proCombos: "三人英雄组合",
+    proWeapons: "枪械选择",
+    proPairs: "双武器搭配",
+    proTopHero: "最常玩",
+    proTopPair: "最常用搭配",
+    proSample: "样本",
+    proMoreHeroes: "还有 {n} 个英雄，展开看前十",
+    proMoreCombos: "还有 {n} 组英雄组合，展开看前十",
+    proMoreWeapons: "还有 {n} 把枪，展开看前十",
+    proMorePairs: "还有 {n} 套枪械搭配，展开看前十",
+    proCollapse: "收起",
+    proCaveat: "口径：只统计主播本人 HUD 上看到的英雄与武器，不是全大厅；英雄组合按「局」去重、英雄选取按「帧」统计，两者单位不同，别横向比。数据由 B站直播回放离线识别得到，不是上游接口。",
+    proMore: "后续会补更多选手与场次。",
+    // —— ALGS 职业赛场（官方赛事赛后统计，离线快照）——
+    algsTitle: "ALGS 职业赛场",
+    algsHint: "官方赛事赛后统计",
+    algsStandings: "战队排名",
+    algsChampion: "冠军",
+    algsTopPoints: "全程积分第一",
+    algsLegends: "英雄选取率",
+    algsCombos: "三人组合",
+    algsMaps: "地图局数",
+    algsRankFinal: "决赛名次（赛事官方）",
+    algsRankStage: "名次取自「{stage}」阶段，不是最终名次。",
+    algsCaveat: "口径：数据来自 ALGS 官方赛事的赛后统计页（apexlegendsstatus.com/algs），由本项目离线抓成快照，不是实时数据 —— 那个站除赛事页外都有人机校验，云函数取不到，所以只能做快照。英雄选取率 = 该英雄在全部对局中被选中的比例；三人组合按「同一套阵容出现的局数」计。",
+    // —— 比赛专区 · 下一场比赛（赛程 / 分组 / 队员，离线快照）——
+    nextTitle: "下一场比赛",
+    nextMatchLabel: "下一场",
+    nextSnapshot: "快照更新于 {d}",
+    nextMeta: "{g} 组 · {t} 支战队 · {m} 场",
+    nextTz: "北京时间 UTC+8",
+    nextInDays: "还有 {n} 天",
+    nextInHours: "还有 {n} 小时",
+    nextInMins: "还有 {n} 分钟",
+    nextStarted: "已到开赛时间",
+    nextEnded: "赛程已结束",
+    nextTimeTbd: "时间待定",
+    nextNoTime: "官方还没公布开赛时间，先看分组。",
+    nextSchedule: "时间安排",
+    nextFormat: "赛制",
+    nextGroups: "分组",
+    nextGroupsHint: "点队伍看队员",
+    nextUntimed: "时间待定",
+    nextRosterTbd: "待公布",
+    nextNoRoster: "赛事页还没公布这队的队员。",
+    nextPlayerCount: "{n} 名队员",
+    nextClose: "关闭",
+    nextCaveat: "口径：赛程、分组、队员都来自 ALGS 官方赛事页（{d} 抓取的离线快照），不是实时数据。官方临时改期、换人或补名单，这里不会自动跟着变 —— 以赛事页为准。",
+    // —— 本赛季段位分布（实时，来自上游没被校验的 JSON 接口）——
+    rankTitle: "本赛季段位分布",
+    rankHint: "排位玩家都卡在哪",
+    rankMine: "你在这里",
+    rankSame: "同段位占 {p}（约 {n} 人）",
+    rankAbove: "比你段位高的玩家占 {p}",
+    rankBelow: "比你段位低的占 {p}",
+    rankSample: "样本 {n} 个有排位记录的账号",
+    rankCaveat: "口径：这是第三方站点 apexlegendsstatus.com 自己账号库里的分布，不是官方公布的全量段位分布，只含有排位记录的账号；数字由上游按天更新。",
+    // —— 猜圈练习 ——
+    rgTitle: "猜圈练习",    rgNoData: "圈数据没打进包（rings_data.js 缺失）。这个页面需要那份数据才能出题。",
+    rgLeft: "剩余",
+    rgMiss: "超时了 —— 20 秒内没确认，这轮没分。",
+    rgMissShort: "超时未猜",
+    rgBank: "题库 {n} 道",
+    rgPerGame: "每局随机抽 {n} 道（不重复）",
+    rgHintN: "本题给 {n} 个提示圈",
+    rgStart: "开始一局",
+    rgRound: "第 {n} / {m} 轮",
+    rgScore: "本局得分",
+  rgBdAcc: "精度分 {n}（圈内偏差 {p}%）",
+  rgBdTime: "用时 {s}s → 时间系数 {m}%",
+  rgLandscape: "横屏",
+  rgLandscapeTip: "把手机横过来，地图会更大。小程序不能自己转屏，需要你手动旋转。",
+  rgBdFormula: "计算：1000 × 精度 {a}% × 时间 {t}%",
+  rgBdHint: "前 5 秒交卷不打折，之后逐秒递减，20 秒时打 55 折。",
+    rgBest: "本次练习最好成绩",
+    rgShowEnds: "提示：最终圈可能落点",
+    rgConfirm: "就这里",
+    rgAsk: "拖动地图，把红点对准下一个圈会收的位置",
+    rgZoomOut: "看全图",
+    rgTut1: "第 1 步：安全区圈会一个个出现 —— 第 0 秒第 1 个、第 5 秒第 2 个、第 10 秒第 3 个。先看清楚它们怎么收。",
+    rgTut2: "第 2 步：**屏幕正中那个红点**就是你要选的位置，你动的是地图。点一下某处会直接聚焦过去，现在试着拖一拖地图、双指捏合放大看看。",
+    rgTut3: "第 3 步：拖到你觉得下一个圈会收的位置，按底部「就这里」，再按「确定」交卷。20 秒内都来得及。",
+    rgRulesShort: "拖动地图把红点对准位置，20 秒内按「就这里」→「确定」交卷。",
+    rgConfirmAsk: "就选这个点？",
+    rgAdjust: "再调调",
+    rgOk: "确定",
+    rgTutTitle: "新手示范",
+    rgTutNext: "下一步",
+    rgTutSkip: "跳过",
+    rgTutDone: "开始一局",
+    rgErr: "误差 {r}",
+    rgHitIn: "落在圈内",
+    rgHitOut: "落在圈外",
+    rgNext: "下一轮",
+    rgDone: "本局结束",
+    rgAgain: "再来一局",
+    rgThisRound: "本轮 {n} 分",
+    // —— 小游戏分类页（`小游戏` tab 的首页）——
+    // 2026-10 用户要求：把轮盘和猜圈放在同一个分类下，底部标签改名「小游戏」。
+    // 所以第 4 个 tab 现在是一个分类页，猜圈练习和轮盘都是它下面的工具。
+    gamesIntro: "赛前练手，纯随机图一乐。",
+    gameRingTitle: "猜圈练习",
+    gameRingDesc: "20 秒内猜下一个圈会收在哪。",
+    gameRingMeta: "题库 {n} 道",
+    gameWheelTitle: "英雄与武器轮盘",
+    gameWheelDesc: "抽英雄 / 三人组合 / 两把枪。",
+    gameWheelMeta: "{h} 位英雄 · {w} 把枪",
+    gamesHint: "两个都是本地玩法，不联网、不耗流量。",
+    // —— 轮盘（英雄 / 武器）——
+    whTitle: "英雄与武器轮盘",
+    whTabHero: "英雄轮盘",
+    whTabWeapon: "武器轮盘",
+    whHeroOne: "抽一位英雄",
+    whHeroThree: "三人英雄组合",
+    whWeaponPair: "一长一短",
+    whWeaponAny: "两把随机",
+    whSpin: "抽取",
+    whAgain: "再抽一次",
+    whSpinning: "转动中…",
+    whHeroResult: "本次抽到",
+    whSquadResult: "本次三人组合",
+    whWeaponResult: "本次配枪",
+    whHeroNote: "纯随机，不按选取率加权。",
+    whSquadNote: "三位不重复，凑一队。",
+    whPairNote: "一把长枪加一把短枪，落地就按这个找枪。",
+    whAnyNote: "两把都从全部枪里抽，可能同一种枪型。",
+    whPoolHero: "池子：{n} 位英雄",
+    whPoolWeapon: "池子：{n} 把枪（长 {a} / 短 {b}）",
+    whModeHeroOne: "从全部 {n} 位英雄里随机抽 1 位。",
+    whModeHeroThree: "从全部 {n} 位英雄里抽 3 位不重复的，凑一队。",
+    whModePair: "长枪 = 步枪 / 轻机枪 / 精确射手 / 狙击；短枪 = 冲锋枪 / 霰弹枪 / 手枪。",
+    whModeAny: "全部 {n} 把枪一起抽，抽 2 把不重复的。",
+    whSideLong: "长枪",
+    whSideShort: "短枪",
+    // —— 圈型速判（看第一个圈，四选一猜下一个圈的圈心）——
+    // 和「猜圈练习」是两种模式：那个是精修（拖动 + 20 秒 + 8 题），这个是快判（点字母 + 10 秒 + 5 题）。
+    rpTitle: "圈型速判",
+    rpNoData: "圈数据没打进包（rings_data.js / match_rings_data.js 缺失），这个玩法出不了题。",
+    rpScore: "本局得分",
+    rpBest: "本次最好成绩",
+    rpRound: "第 {n} / {m} 题",
+    rpAsk: "下个圈的圈心在哪？",
+    rpLeft: "剩余",
+    rpNext: "下一题",
+    rpAgain: "再来一局",
+    rpRight: "答对了",
+    rpWrong: "答错了",
+    rpTimeout: "超时了",
+    rpGain: "+{n} 分",
+    rpAnswerIs: "正确点是 {x}",
+    rpOff: "差 {x} 个圈半径",
+    rpSummary: "{m} 题答对 {n} 个 · 本局 {s} 分",
+    rpRules: "白圈是第一个安全区圈；红圈（答完才出现）是真实的下一个圈。四个字母都可能是它的圈心。",
+    // 分类页上的第三张卡
+    gamePickTitle: "圈型速判",
+    gamePickDesc: "四个候选圈心，点一个。",
+    gamePickMeta: "题库 {n} 道 · 每题 10 秒",
+    // —— 地图工具入口（地图页页脚上方）——
+    // （原来这里还有「交互地图」那一整套词条：用户反馈那个页面"完全不知道是用来干什么的"，
+    //   页面已删，词条也跟着删 —— 留着不用的键只会让人以为还有这个功能。）
+    peopleUnit: "人",
+    mastersPred: "大师+猎杀",
+    predNote1: "卡片上那个分数就是第 750 名的分数线（各平台都取前 750 名）。",
+    predNote2: "所以「猎杀人数」和「大师+猎杀人数」就是顶端最稀少那部分人的真实规模。",
+    predNote3: "官方不公布完整的段位分布，这两个数是能逐条核对的替代。",
+    deltaNote1: "「较昨日同期」是拿当前的分数线和约 24 小时前的记录对比出来的，对比的是哪一条会写在数字后面。",
+    deltaNote2: "这一项是本站自己按小时记的，攒够一天才有 —— 头一天不显示是正常的。",
+    lookupTitle: "查某人的猎杀排名",
+    playerIdPlaceholder: "EA ID",
+    playerIdCasePlaceholder: "EA 账号 ID（不是游戏里的名字）",
+    needInput: "请先输入 EA ID。",
+    ladderNote: "接口只在玩家进入猎杀（Apex Predator）后才返回榜内名次，大师及以下显示「未进猎杀榜」是正常的。",
+    // —— 战队专区（当前隐藏，文案留着）——
+    teamsTitle: "战队专区",
+    teamsHint: "名单随赛季更新",
+    teamsNote: "只收录本赛季打了排位的选手（未定级的账号不展示 —— 那多半是撞名的别人，或者选手的备用号）。名单来自公开赛事信息，键鼠/手柄标注取自公开资料，未标注 = 暂未确认。",
+    // （2026-10-16 删掉了「英雄选取率」picksTitle/picksHint/picksNote 和
+    //   「职业热门组合」compsTitle/compAvgPlace/compsNote 两组词条 —— 用户要求，
+    //   排位专区里已经有职业选手的英雄选取和三人英雄组合。见 stats.wxml 的说明。）
+    // —— 战绩页 ——
+    seasonLeft: "赛季剩余",
+    seasonEnded: "本赛季已结束",
+    seasonUnitDay: "天",
+    seasonUnitHour: "小时",
+    statsSourceWarn: "数据来自第三方接口，可能老旧，不一定查得到每位玩家。不便之处见谅。",
+    statsTitle: "查玩家战绩",
+    uidLine: "UID",
+    uidCopyHint: "（长按可复制）",
+    careerTitle: "生涯数据",
+    careerNote: "这些数据来自玩家在游戏里挂在传奇旗帜上的追踪器，没挂的就没有，所以每个人能看到的多少不一样。",
+    hint1: "要查的是【EA 账号 ID】—— 注册 EA 账号时那个英文名，不是游戏里显示的名字。",
+    hint2: "不知道自己的 EA ID？在电脑上打开 EA App，或浏览器登录 ea.com，进「账号设置」就能看到。",
+    hint3: "Steam / Origin 玩家请选「PC」。UID 游戏里看不到：查一次你自己就有（长按复制）。",
+    hint4: "名字可能重名（Steam 玩家常见）：查到的人不对，换个平台再试。",
+    statsPrivacy: "本页不保存任何查询记录，也不提供近期对局记录（数据源的对局历史接口暂不对新用户开放）。",
+    // —— 页脚（免责声明，必须与 EA 内容政策要求一致）——
+    foot1: "数据来自第三方社区站点 Apex Legends Status，非 EA / Respawn 官方数据，可能存在数分钟延迟。",
+    foot2: "本工具与其无隶属关系，游戏名称与商标归各自权利人所有。",
+    // —— 玩家结果里的零碎 ——
+    levelPre: " · 等级 ",
+    prestigePre: " · 威望 ",
+    usedLegend: "当前使用 ",
+    banned: "该账号已被封禁",
+    online: "在线",
+    inGame: "在线 · 游戏中",
+    offline: "离线",
+    gapScoreUnit: " 分",
+    gapReached: "已达到猎杀线",
+    gapAlready: "已进入猎杀榜",
+    gapLinePre: "本期猎杀线 ",
+    gapCurrentPre: "你当前 ",
+    // —— 服务端错误标题（按 kind）——
+    errConfig: "还没配置数据源 Key",
+    errKey: "数据源 Key 无效",
+    errKeyInactive: "数据源 Key 未激活",
+    errInternal: "云函数内部错误",
+    errNetwork: "连不上服务器",
+    errTimeout: "响应超时",
+    errRate: "请求太频繁",
+    errEmpty: "这次没取到数据",
+    errUpstream: "数据源返回了错误",
+    errPlayerNotFound: "查无此人",
+    errPlayerNotFoundBody: "没有这个 EA 账号 ID。注意：要填的是 EA 账号 ID（英文，注册 EA 账号时那个），不是游戏里显示的名字 —— 这两个即使都是英文也不一样。Steam / Origin 玩家记得把平台选成 PC。也可能只是第三方库还没收录这个人，或上游那一会儿抽风，稍后再试一次。",
+    errGeneric: "获取失败",
+    errRetry: "稍后再试。"
+  },
+  en: {
+    langLabel: "Language",
+    query: "Search",
+    querying: "Searching…",
+    currentRank: "Current rank",
+    rankScore: "Ranked points",
+    predatorRank: "Predator standing",
+    notRanked: "Unranked / no ranked data",
+    notInLadder: "Not on the Predator ladder",
+    unknown: "Unknown",
+    loading: "Loading…",
+    mapsTitle: "Current map rotation",
+    pubsHiddenHint: "Battle Royale is hidden by default \u2014 tap \u2699 Settings at the top left to turn it on.",
+    pubsHintHide: "Don't show again",
+    pickTitle: "Which modes to show",
+    pickHint: "Keep at least one",
+    pickEntry: "Settings",
+    panelLang: "Language",
+    panelTheme: "Theme",
+    modePubsShort: "Pubs",
+    modeRankedShort: "Ranked",
+    schedToday: "Today",
+    schedTomorrow: "Tomorrow",
+    schedDayAfter: "Day after",
+    schedMore: "Show the next 24 hours",
+    schedLess: "Hide",
+    schedUnknownMap: "TBD",
+    schedNote: "Modes are extrapolated from the three-slot cycle (Gun Run \u2192 Team Deathmatch \u2192 Control). Maps are recorded in the background, one slot at a time \u2014 slots we haven't observed yet stay blank rather than guessed.",
+    evtControl: "Control",
+    evtTdm: "Team Deathmatch",
+    evtGunRun: "Gun Run",
+    themeDark: "Dark",
+    themeLight: "Light",
+    navMaps: "Map rotation",
+    navPredator: "Ranked hub",
+    navMatches: "Esports",
+    navGames: "Games",
+    navStats: "Player stats",
+    tabMaps: "Maps",
+    tabPredator: "Ranked",
+    tabMatches: "Esports",
+    tabGames: "Games",
+    rotateIn: "ROTATES IN",
+    thisRound: "This round",
+    rotatingNow: "rotating…",
+    modeOff: "Not active right now",
+    modeOffTip: "This mode is not in the current rotation. It will show up here automatically once it is.",
+    nextUp: "Up next",
+    unknownKeysPre: "The data source returned mode fields we have never seen: ",
+    unknownKeysPost: ". If a mode says \u201cnot active\u201d but it is clearly running in your game, please report this line to the maintainer.",
+    predTitle: "Predator cutoff by platform",
+    predUnit: "Predators",
+    proTitle: "Pro player data",
+    proAll: "All",
+    proAllNote: "Totals across every player we have, for the overall trend.",
+    proHeroes: "Legend picks",
+    proCombos: "Three-legend comps",
+    proWeapons: "Weapon picks",
+    proPairs: "Two-weapon loadouts",
+    proTopHero: "Most played",
+    proTopPair: "Top loadout",
+    proSample: "Sample",
+    proMoreHeroes: "{n} more legends \u2014 tap to see the top 10",
+    proMoreCombos: "{n} more comps \u2014 tap to see the top 10",
+    proMoreWeapons: "{n} more weapons \u2014 tap to see the top 10",
+    proMorePairs: "{n} more loadouts \u2014 tap to see the top 10",
+    proCollapse: "Show less",
+    proCaveat: "Scope: only what appears on the streamer's own HUD, not the whole lobby. Comps are counted per game, legend picks per frame \u2014 different units, don't compare them side by side. Derived offline from Bilibili VODs, not from the upstream API.",
+    proMore: "More players and sessions will be added.",
+    algsTitle: "ALGS pro scene",
+    algsHint: "official event stats",
+    algsStandings: "Standings",
+    algsChampion: "Champion",
+    algsTopPoints: "Top by total points",
+    algsLegends: "Legend pick rates",
+    algsCombos: "Three-legend comps",
+    algsMaps: "Games per map",
+    algsRankFinal: "Final placement (official)",
+    algsRankStage: "Placement comes from the \"{stage}\" stage, not the final result.",
+    algsCaveat: "Scope: post-event stats from the official ALGS event pages on apexlegendsstatus.com, captured offline into a snapshot \u2014 not live data (that site serves browsers only, so a cloud function cannot fetch it). Legend pick rate is the share of picks across all games; comps are counted per game.",
+    // —— Esports · next match (schedule / groups / rosters, offline snapshot) ——
+    nextTitle: "Next match",
+    nextMatchLabel: "Next up",
+    nextSnapshot: "snapshot {d}",
+    nextMeta: "{g} groups \u00b7 {t} teams \u00b7 {m} matches",
+    nextTz: "Beijing time (UTC+8)",
+    nextInDays: "in {n} days",
+    nextInHours: "in {n} hours",
+    nextInMins: "in {n} min",
+    nextStarted: "start time reached",
+    nextEnded: "schedule finished",
+    nextTimeTbd: "time TBD",
+    nextNoTime: "No start times announced yet \u2014 groups only.",
+    nextSchedule: "Schedule",
+    nextFormat: "Format",
+    nextGroups: "Groups",
+    nextGroupsHint: "tap a team for its roster",
+    nextUntimed: "Time TBD",
+    nextRosterTbd: "TBD",
+    nextNoRoster: "The event page has not published this roster yet.",
+    nextPlayerCount: "{n} players",
+    nextClose: "Close",
+    nextCaveat: "Scope: schedule, groups and rosters are an offline snapshot of the official ALGS event page (captured {d}), not live data. Late schedule or roster changes will not update automatically \u2014 the event page is authoritative.",
+    rankTitle: "Ranked distribution this split",
+    rankHint: "where the ladder actually sits",
+    rankMine: "You are here",
+    rankSame: "Your tier is {p} of players (~{n})",
+    rankAbove: "{p} of players are ranked above you",
+    rankBelow: "{p} of players are ranked below you",
+    rankSample: "sample: {n} accounts with a ranked record",
+    rankCaveat: "Scope: this is the distribution inside the third-party site apexlegendsstatus.com's own account database, not Respawn's official ladder distribution, and only accounts with a ranked record are counted. Upstream refreshes it daily.",
+    rgTitle: "Ring guess practice",
+    rgNoData: "Ring data is missing from this build (rings_data.js). This page needs it to deal rounds.",
+    rgLeft: "left",
+    rgMiss: "Time ran out \u2014 nothing confirmed within 20 seconds, so no points this round.",
+    rgMissShort: "No guess",
+    rgBank: "{n} rounds in the bank",
+    rgPerGame: "{n} drawn per game, no repeats",
+    rgHintN: "this round shows {n} rings",
+    rgStart: "Start a game",
+    rgRound: "Round {n} / {m}",
+    proSearch: "Search player",
+  proClear: "Clear",
+  proMore: "Show all",
+  proCollapse: "Collapse",
+  rgScore: "Score",
+  rgLandscape: "Landscape",
+  rgLandscapeTip: "Turn the phone sideways - the map gets bigger. The app cannot force rotation by itself.",
+  rgBdAcc: "Accuracy {n} ({p}% within the ring)",
+  rgBdTime: "{s}s used \u2192 time factor {m}%",
+  rgBdFormula: "Formula: 1000 x accuracy {a}% x time {t}%",
+  rgBdHint: "No time discount in the first 5s, then it tapers to 55% at 20s.",
+    rgBest: "Best this session",
+    rgShowEnds: "Hint: possible final ring spots",
+    rgConfirm: "Guess here",
+    rgAsk: "Drag the map to put the red dot where the next ring will end",
+    rgZoomOut: "Whole map",
+    rgTut1: "Step 1: safe-zone rings appear one by one \u2014 ring 1 at 0s, ring 2 at 5s, ring 3 at 10s. Watch how they close in.",
+    rgTut2: "Step 2: the pin\u2019s tip marks the centre of the screen to the centre of the screen \u2014 you move the MAP. Tap somewhere to jump there, then try dragging the map and pinching to zoom.",
+    rgTut3: "Step 3: drag until the crosshair sits where you think the next ring will end, then tap Guess here and Confirm. You have 20 seconds.",
+    rgRulesShort: "Drag the map to place the red dot; within 20s tap Guess here, then Confirm.",
+    rgConfirmAsk: "Lock in this spot?",
+    rgAdjust: "Adjust",
+    rgOk: "Confirm",
+    rgTutTitle: "Quick walkthrough",
+    rgTutNext: "Next",
+    rgTutSkip: "Skip",
+    rgTutDone: "Start playing",
+    rgErr: "Off by {r}",
+    rgHitIn: "inside the ring",
+    rgHitOut: "outside the ring",
+    rgNext: "Next round",
+    rgDone: "Game over",
+    rgAgain: "Play again",
+    rgThisRound: "{n} pts this round",
+    // —— Games hub (the "小游戏" tab) ——
+    gamesIntro: "Pre-game toys, pure chance.",
+    gameRingTitle: "Ring guess practice",
+    gameRingDesc: "Guess where the next ring closes within 20s.",
+    gameRingMeta: "{n} rounds in the bank",
+    gameWheelTitle: "Legend & weapon wheel",
+    gameWheelDesc: "Legends, squads and loadouts.",
+    gameWheelMeta: "{h} legends \u00b7 {w} weapons",
+    gamesHint: "Both run entirely on your phone \u2014 no network, no data used.",
+    // —— Wheel (legends / weapons) ——
+    whTitle: "Legend & weapon wheel",
+    whTabHero: "Legend wheel",
+    whTabWeapon: "Weapon wheel",
+    whHeroOne: "One legend",
+    whHeroThree: "Three-legend squad",
+    whWeaponPair: "Long + short",
+    whWeaponAny: "Two random guns",
+    whSpin: "SPIN",
+    whAgain: "Spin again",
+    whSpinning: "Spinning\u2026",
+    whHeroResult: "You got",
+    whSquadResult: "Your squad",
+    whWeaponResult: "Your loadout",
+    whHeroNote: "Pure chance \u2014 pick rates are not weighted.",
+    whSquadNote: "Three different legends, one squad.",
+    whPairNote: "One long-range and one close-range gun \u2014 loot for these.",
+    whAnyNote: "Both drawn from every gun; they may be the same class.",
+    whPoolHero: "{n} legends in the pool",
+    whPoolWeapon: "{n} guns ({a} long / {b} short)",
+    whModeHeroOne: "One of the {n} legends, picked at random.",
+    whModeHeroThree: "Three different legends out of {n}, as a squad.",
+    whModePair: "Long = rifle / LMG / marksman / sniper; short = SMG / shotgun / pistol.",
+    whModeAny: "Two different guns out of all {n}.",
+    whSideLong: "Long range",
+    whSideShort: "Short range",
+    // —— Quick ring call (see the first zone, pick one of four centres) ——
+    rpTitle: "Quick ring call",
+    rpNoData: "Ring data is missing from this build (rings_data.js / match_rings_data.js). This game needs it to deal questions.",
+    rpScore: "Score",
+    rpBest: "Best this session",
+    rpRound: "Question {n} / {m}",
+    rpAsk: "Where will the next centre land?",
+    rpLeft: "left",
+    rpNext: "Next",
+    rpAgain: "Play again",
+    rpRight: "Correct",
+    rpWrong: "Not quite",
+    rpTimeout: "Time up",
+    rpGain: "+{n} pts",
+    rpAnswerIs: "The answer was {x}",
+    rpOff: "{x} ring radii away",
+    rpSummary: "{n} of {m} correct \u00b7 {s} pts",
+    rpRules: "The white ring is the first zone. The red ring (shown once you answer) is the real next one. Any of the four letters could be its centre.",
+    gamePickTitle: "Quick ring call",
+    gamePickDesc: "Four candidate centres, pick one.",
+    gamePickMeta: "{n} questions \u00b7 10s each",
+    peopleUnit: "",
+    mastersPred: "Master + Predator",
+    predNote1: "The number on each card is the RP of rank 750 (every platform caps at 750).",
+    predNote2: "So \u201cPredators\u201d and \u201cMaster + Predator\u201d are the real size of the very top of the ladder.",
+    predNote3: "Respawn does not publish a full rank distribution; these two numbers are the verifiable substitute.",
+    deltaNote1: "\u201cSince yesterday\u201d compares the current cutoff with a reading taken about 24 hours ago; the exact baseline is printed after the number.",
+    deltaNote2: "This is recorded hourly by this tool, so it needs a full day of history \u2014 it is normal for it to be missing on day one.",
+    lookupTitle: "Look up a player's Predator standing",
+    playerIdPlaceholder: "EA ID",
+    playerIdCasePlaceholder: "EA account ID (not your in-game name)",
+    needInput: "Enter an EA ID first.",
+    ladderNote: "The API only returns a ladder position once a player has reached Apex Predator. Master and below showing \u201cnot on the ladder\u201d is expected.",
+    teamsTitle: "Pro teams",
+    teamsHint: "Roster updated each season",
+    teamsNote: "Only players who have played ranked this season are listed (unranked accounts are hidden \u2014 they are usually a namesake or a player's alternate account). Rosters come from public tournament information; input device and nationality come from public sources; blank means unconfirmed.",
+    seasonLeft: "Season ends in",
+    seasonEnded: "This season has ended",
+    seasonUnitDay: "d",
+    seasonUnitHour: "h",
+    statsSourceWarn: "Data comes from a third-party API and can be stale \u2014 some players may not be found. Sorry for the inconvenience.",
+    statsTitle: "Look up player stats",
+    uidLine: "UID",
+    uidCopyHint: " (long-press to copy)",
+    careerTitle: "Career stats",
+    careerNote: "These come from the trackers a player has equipped on their legend banner in game. No tracker equipped means no number, so different players show different amounts.",
+    hint1: "Enter your [EA account ID] \u2014 the English name from EA account registration, not your in-game display name.",
+    hint2: "Don't know your EA ID? Open the EA app on PC, or sign in to ea.com in a browser, and check Account Settings.",
+    hint3: "Steam / Origin players: pick \u201cPC\u201d. The UID is not visible in-game \u2014 look yourself up once and it appears (long-press to copy).",
+    hint4: "Names can collide (common for Steam players): if you get the wrong person, try another platform.",
+    statsPrivacy: "This page stores no search history and does not offer recent match history (the data source's match-history API is not open to new users).",
+    foot1: "Data comes from the third-party community site Apex Legends Status. It is not official EA / Respawn data and may lag by a few minutes.",
+    foot2: "This tool is not affiliated with them. Game names and trademarks belong to their respective owners.",
+    levelPre: " \u00b7 level ",
+    prestigePre: " \u00b7 prestige ",
+    usedLegend: "Last played ",
+    banned: "This account is banned",
+    online: "Online",
+    inGame: "Online \u00b7 in game",
+    offline: "Offline",
+    gapScoreUnit: " RP to go",
+    gapReached: "Cutoff reached",
+    gapAlready: "Already on the Predator ladder",
+    gapLinePre: "This split's cutoff ",
+    gapCurrentPre: "You are at ",
+    errConfig: "API key not configured",
+    errKey: "Invalid API key",
+    errKeyInactive: "API key not activated",
+    errInternal: "Cloud function error",
+    errNetwork: "Cannot reach the server",
+    errTimeout: "Request timed out",
+    errRate: "Too many requests",
+    errEmpty: "No data this time",
+    errUpstream: "The data source returned an error",
+    errPlayerNotFound: "Player not found",
+    errPlayerNotFoundBody: "No such EA account ID. Note that this must be your EA account ID (the English name from EA account registration), not your in-game display name \u2014 the two differ even when both are plain English. Steam / Origin players should switch the platform to PC. It can also mean the third-party database has not indexed this player yet, or a transient upstream hiccup \u2014 try again in a moment.",
+    errGeneric: "Request failed",
+    errRetry: "Please try again later."
+  }
+};
+
+/* ============================================================
+   段位中文名（上游只给英文）
+   ============================================================ */
+
+var RANK_CN = {
+  "Rookie": "新手",
+  "Bronze": "青铜",
+  "Silver": "白银",
+  "Gold": "黄金",
+  "Platinum": "白金",
+  "Diamond": "钻石",
+  "Master": "大师",
+  "Apex Predator": "猎杀者",
+  "Unranked": "未定级"
+};
+
+/* ============================================================
+   函数
+   ============================================================ */
+
+function normalizeLang(lang) {
+  return LANGS.indexOf(lang) >= 0 ? lang : "zh";
+}
+
+/**
+ * 当前语言。**只放在内存里，不写本地存储。**
+ *
+ * 本项目有一条被测试守着的隐私承诺：全项目不使用微信的本地存储接口
+ * （见 tests/static.test.mjs「不保存任何用户数据」那一条）。
+ * 代价：重启小程序会回到中文；**切 tab 不会丢**（模块在同一个 app 实例里是单例）。
+ */
+var currentLang = prefs.get("lang", "zh");
+
+/** @returns {"zh"|"en"} 当前语言 */
+function getLang() {
+  return currentLang;
+}
+
+function setLang(lang) {
+  currentLang = normalizeLang(lang);
+  prefs.set("lang", currentLang);   // 记住选择（只存界面偏好，不含个人信息）
+  return currentLang;
+}
+
+/**
+ * 取整本词表（给页面塞进 data 用）。
+ *
+ * **只有"缺这个 key"才回退中文；显式给空串是合法的** ——
+ * 比如英文里的量词 peopleUnit 本来就该是空的（"Predators 750" 不加单位）。
+ * 如果拿 truthy 判断回退，英文页面就会冒出中文的「人」。
+ */
+function T(lang) {
+  var l = normalizeLang(lang);
+  var out = {};
+  Object.keys(DICT.zh).forEach(function (k) {
+    var v = (DICT[l] && DICT[l][k] !== undefined) ? DICT[l][k] : DICT.zh[k];
+    out[k] = (v === undefined) ? k : v;   // 绝不返回 undefined
+  });
+  out.lang = l;
+  return out;
+}
+
+/** 单个词条 */
+function t(lang, key) {
+  var l = normalizeLang(lang);
+  if (DICT[l] && DICT[l][key]) return DICT[l][key];
+  return DICT.zh[key] || key;
+}
+
+/** 段位名：中文模式下译成中文，英文模式原样。查不到就原样返回（绝不空白） */
+function rankName(name, lang) {
+  var s = name == null ? "" : String(name);
+  if (!s) return "";
+  if (normalizeLang(lang) === "en") return s;
+  return RANK_CN[s] || s;
+}
+
+/** 相对时间："刚刚更新" / "updated just now"。对齐 core.fmtAgo 的中文行为 */
+function ago(ts, nowMs, lang) {
+  var en = normalizeLang(lang) === "en";
+  if (!ts) return en ? "not updated yet" : "尚未更新";
+  var now = (typeof nowMs === "number" && isFinite(nowMs)) ? nowMs : Date.now();
+  var s = Math.floor((now - ts) / 1000);
+  if (s < 5) return en ? "updated just now" : "刚刚更新";
+  if (s < 60) return en ? ("updated " + s + "s ago") : (s + " 秒前更新");
+  var m = Math.floor(s / 60);
+  if (m < 60) return en ? ("updated " + m + "m ago") : (m + " 分钟前更新");
+  var h = Math.floor(m / 60);
+  return en ? ("updated " + h + "h ago") : (h + " 小时前更新");
+}
+
+/** 赛季："第 30 赛季 第 2 阶段" / "Season 30 · Split 2" */
+function season(text, lang) {
+  var raw = text == null ? "" : String(text).trim();
+  if (!raw) return "";
+  var m = raw.match(/s(\d+)_s(\d+)/i);
+  if (!m) return raw;
+  return normalizeLang(lang) === "en"
+    ? ("Season " + m[1] + " \u00b7 Split " + m[2])
+    : ("第 " + m[1] + " 赛季 第 " + m[2] + " 阶段");
+}
+
+/**
+ * 原生外壳（底部 tab、顶部标题）也要跟着语言走。
+ *
+ * 它们本来写在 `app.json` 和页面 json 里，是**静态中文** —— 切到英文时会露馅。
+ * 只能在运行时用 wx 的接口改。三个 tab 的下标和 app.json 里的顺序必须一致。
+ */
+// ⚠️ 顺序必须和 app.json 里 tabBar.list 的**下标**一一对应：
+// 第 4 项 2026-10-16 从「战绩」换成「猜圈」小游戏，2026-10 又从「猜圈」
+// 扩成「小游戏」分类（猜圈练习 + 轮盘都在里面）。
+var TAB_KEYS = ["tabMaps", "tabPredator", "tabMatches", "tabGames"];
+
+/**
+ * 把语言应用到原生外壳。
+ * @param {string} lang
+ * @param {string} [navKey] 当前页面的标题词条，不传就只改 tab
+ */
+function applyChrome(lang, navKey) {
+  var l = normalizeLang(lang);
+  if (typeof wx === "undefined") return;
+  if (typeof wx.setTabBarItem === "function") {
+    for (var i = 0; i < TAB_KEYS.length; i++) {
+      // tab 还没建好时这个调用会失败，属于正常情况（页面 onShow 还会再来一次）
+      try { wx.setTabBarItem({ index: i, text: t(l, TAB_KEYS[i]) }); } catch (e) { /* 忽略 */ }
+    }
+  }
+  if (navKey && typeof wx.setNavigationBarTitle === "function") {
+    try { wx.setNavigationBarTitle({ title: t(l, navKey) }); } catch (e) { /* 忽略 */ }
+  }
+}
+
+module.exports = {
+  LANGS: LANGS,
+  LANG_KEY: LANG_KEY,
+  DICT: DICT,
+  RANK_CN: RANK_CN,
+  normalizeLang: normalizeLang,
+  getLang: getLang,
+  setLang: setLang,
+  T: T,
+  t: t,
+  rankName: rankName,
+  applyChrome: applyChrome,
+  ago: ago,
+  season: season
+};

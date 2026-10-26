@@ -1,0 +1,19 @@
+# 本机私有配置：微信开发者工具按机器生成，每台机器不同，不入库
+project.private.config.json
+
+# 预览 / 截图产物（tools/preview.mjs、tools/shot.mjs 生成，体积大，可随时重跑）
+preview/
+out_*.html
+
+# 本地日志
+*.log
+
+# 依赖与系统文件
+node_modules/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 本地手工备份（例如 match_rings_data.js.bak-20261026-033049）
+*.bak-*

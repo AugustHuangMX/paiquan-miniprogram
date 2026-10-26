@@ -1,0 +1,67 @@
+<!--
+  英雄 / 武器轮盘。玩法、抽签与动画的说明见 wheel.js 顶部。
+
+  版面（一屏）：
+      轮盘开关（英雄 / 武器） → 玩法开关 → 转盘（中间是抽取按钮） → 池子 → 结果 → 一句规则
+
+  几条不能动的约定：
+    · 扇形用 clip-path + **百分比**（rpx 会被编译期替换搞坏，见 docs/design/README.md）；
+    · 转盘上的字是**径向**的，角度由 utils/wheel_data.js 算好，WXML 里只贴 style；
+    · wx:if / wx:for 不写在同一个标签上；不用 wx:else（预览器会两个分支都渲染）。
+-->
+<view class="wrap theme-{{theme}}" data-lang="{{lang}}">
+
+  <!-- 两个轮盘：切换会换池子并清掉上一轮结果 -->
+  <view class="wtabs">
+    <view wx:for="{{tabs}}" wx:key="label" data-i="{{index}}" bindtap="onTab"
+          class="wtab {{item.on ? 'wtab-on' : ''}}">{{item.label}}</view>
+  </view>
+
+  <!-- 玩法：隶属于当前轮盘 -->
+  <view class="wmodes">
+    <view wx:for="{{modes}}" wx:key="label" data-i="{{index}}" bindtap="onMode"
+          class="wmode {{item.on ? 'wmode-on' : ''}}">{{item.label}}</view>
+  </view>
+
+  <!-- 转盘：指针钉在正上方，转的是盘面 -->
+  <view class="wwheel">
+    <view class="wptr"></view>
+
+    <view class="wdisc" style="transform: rotate({{rot}}deg);">
+      <!-- 扇形（挖出来的月牙形色块） -->
+      <view wx:for="{{wedges}}" wx:key="i" style="{{item.style}}"
+            class="wseg {{index % 2 ? 'wseg-b' : 'wseg-a'}} {{item.on ? 'wseg-on' : ''}}"></view>
+      <!-- 盘面上的名字：位置 + 旋转都算在 style 里，单独一层是为了不被扇形裁掉 -->
+      <view wx:for="{{spots}}" wx:key="i" style="{{item.style}}"
+            class="wspot {{item.on ? 'wspot-on' : ''}}">
+        <text class="wspot-t">{{item.label}}</text>
+      </view>
+    </view>
+
+    <view class="wrim"></view>
+
+    <!-- 中间的抽取按钮：200rpx 见方，远大于 80rpx 的热区下限 -->
+    <view class="whub {{spinning ? 'whub-off' : ''}}" bindtap="onSpin">
+      <text class="whub-t">{{spinning ? T.whSpinning : (result ? T.whAgain : T.whSpin)}}</text>
+    </view>
+  </view>
+
+  <view class="wpool">{{poolText}}</view>
+
+  <!-- 结果：一位英雄是"大卡"，三位组合 / 两把枪是并排小卡 -->
+  <view wx:if="{{result}}" class="wres">
+    <view class="wres-h">{{result.title}}</view>
+    <view class="wcards {{result.n > 1 ? 'wcards-col' : ''}}">
+      <view wx:for="{{result.rows}}" wx:key="name" class="wcard">
+        <image wx:if="{{item.hasIcon}}" class="wcard-img" src="{{item.icon}}" mode="aspectFill"></image>
+        <view class="wcard-txt">
+          <text wx:if="{{item.tag}}" class="wcard-tag">{{item.tag}}</text>
+          <text class="wcard-n">{{item.name}}</text>
+        </view>
+      </view>
+    </view>
+    <text class="wres-n">{{result.note}}</text>
+  </view>
+
+  <view class="wnote">{{noteText}}</view>
+</view>

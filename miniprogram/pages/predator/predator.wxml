@@ -1,0 +1,383 @@
+<view class="wrap theme-{{theme}}" data-lang="{{lang}}">
+
+  <!-- 自定义导航栏：⚙ 常驻左上角，和地图页一模一样（用户 2026-10 的决定）。
+       微信原生导航栏不接受任何自定义元素，所以整条自己画。 -->
+  <view class="navbar" style="padding-top: {{navTop}}px; height: {{navH}}px;">
+    <view class="navbtn {{panelOpen ? 'navbtn-on' : ''}}" bindtap="onTogglePanel">⚙</view>
+    <text class="navtitle">{{T.navPredator}}</text>
+    <view class="navspace" style="width: {{navRight}}px;"></view>
+  </view>
+
+  <!-- 设置面板：这一页只需要语言和主题（模式筛选是地图页特有的） -->
+  <view wx:if="{{panelOpen}}" class="panel">
+    <view class="panel-t">{{T.panelLang}}</view>
+    <view class="panel-row">
+      <view class="langsw">
+        <view class="langsw-i langsw-l {{lang === 'zh' ? 'langsw-on' : ''}}" data-l="zh" bindtap="onLang">中文</view>
+        <view class="langsw-i langsw-r {{lang === 'en' ? 'langsw-on' : ''}}" data-l="en" bindtap="onLang">EN</view>
+      </view>
+    </view>
+    <view class="panel-t">{{T.panelTheme}}</view>
+    <view class="panel-row">
+      <view class="langsw">
+        <view class="langsw-i langsw-l {{theme === 'dark' ? 'langsw-on' : ''}}" data-t="dark" bindtap="onTheme">{{T.themeDark}}</view>
+        <view class="langsw-i langsw-r {{theme === 'light' ? 'langsw-on' : ''}}" data-t="light" bindtap="onTheme">{{T.themeLight}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 赛季（战斗通行证）倒计时。2026-10-16 从战绩页搬到**排位专区顶部**（用户要求）：
+       这页是"排位"相关信息的家，赛季什么时候结束直接决定"还来不来得及上分"。
+       数据来自云端配置，拿不到就整行不显示；只报到天 —— 数据源本身是天级精度，
+       报时分秒是假精确。 -->
+  <view wx:if="{{seasonShow}}" class="seasonline">
+    <text class="seasonline-t">{{T.seasonLeft}}</text>
+    <text class="seasonline-v">{{seasonEnded ? T.seasonEnded : (seasonDays > 0 ? seasonDays + ' ' + T.seasonUnitDay + ' ' : '') + seasonHours + ' ' + T.seasonUnitHour}}</text>
+  </view>
+
+  <view wx:if="{{err.kind}}" class="msg msg-{{err.style}}">
+    <text class="msg-title">{{err.title}}</text>
+    <text class="msg-body">{{err.message}}</text>
+  </view>
+
+  <!-- ================= 排位专区 =================
+       职业选手的排位数据（英雄选取 / 三人英雄组合 / 枪械选择）。
+       数据来自「直播识别」目录的离线识别（B站直播回放逐帧识别），
+       **不是上游接口** —— 所以这一块不联网、先于分数线渲染出来。 -->
+  <view class="sec-title">
+    {{T.proTitle}}
+    <text wx:if="{{pro.updatedText}}" class="sec-hint">{{pro.updatedText}}</text>
+  </view>
+
+  <!-- 选手切换：**只显示名字**（用户要求不显示"主播/职业选手"这类身份标签）。
+       那个小标签当初是为了区分两个同名 QQ 才加的，现在 QQ 的排位与训练赛已合并，
+       没有重名问题了，标签也就没有存在必要。 -->
+  <!-- 电脑端不横向滚（桌面上 scroll-view 会吃掉滚轮，导致页面卡住滑不动），
+       改成换行铺开；手机上仍是横滑 -->
+    <!-- 选手多到一屏放不下：先给搜索框，再只显示前 12 个，其余折叠 -->
+    <view wx:if="{{proCanExpand}}" class="prosearch">
+      <input class="prosearch-in" value="{{proQuery}}" placeholder="{{T.proSearch}}"
+             placeholder-class="ph" bindinput="onProQuery" confirm-type="search" />
+      <view wx:if="{{proQuery}}" class="prosearch-x" bindtap="onProQueryClear">{{T.proClear}}</view>
+    </view>
+
+    <view class="prochips prox-grid">
+      <view wx:for="{{proChipsView}}" wx:key="id" data-id="{{item.id}}" bindtap="onProChip"
+            class="prochip {{item.active ? 'prochip-on' : ''}}">{{item.name}}</view>
+    </view>
+
+    <view wx:if="{{proCanExpand && !proQuery}}" class="promore" bindtap="onProToggle">
+      <text wx:if="{{proExpand}}">{{T.proCollapse}}</text>
+      <text wx:else>{{T.proMore}} {{proMoreCount}}</text>
+    </view>
+
+  <block wx:if="{{pro.stat}}">
+    <!-- 头条层：一眼回答"这人最常玩什么、怎么配枪、样本多大"。
+         原版是一上来就给 24 行等权重的列表，眼睛没有入口 —— 这是最大的毛病。 -->
+    <view class="hcards">
+      <view class="hcard hcard-hero">
+        <text class="hcard-k">{{pro.stat.headline.hero.label}}</text>
+        <view class="hcard-row">
+          <image wx:if="{{pro.stat.headline.hero.hasIcon}}" class="hcard-ic" src="{{pro.stat.headline.hero.icon}}" mode="aspectFill"></image>
+          <view class="hcard-txt">
+            <text class="hcard-v">{{pro.stat.headline.hero.main}}</text>
+            <text class="hcard-s">{{pro.stat.headline.hero.sub}}</text>
+          </view>
+        </view>
+        <text class="hcard-big">{{pro.stat.headline.hero.pctText}}</text>
+      </view>
+      <view class="hcard-col">
+        <view class="hcard hcard-half">
+          <text class="hcard-k">{{pro.stat.headline.pair.label}}</text>
+          <text class="hcard-v2">{{pro.stat.headline.pair.main}}</text>
+          <text class="hcard-p2">{{pro.stat.headline.pair.pctText}}</text>
+        </view>
+        <view class="hcard hcard-half">
+          <text class="hcard-k">{{pro.stat.headline.sample.label}}</text>
+          <text class="hcard-v2">{{pro.stat.headline.sample.value}}<text class="hcard-u">{{pro.stat.headline.sample.unit}}</text></text>
+          <text class="hcard-s">{{pro.stat.headline.sample.sub}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 选手信息：**不带直播标题、也不带身份标签**（用户要求）。
+         回放标题不代表内容（写着"训练赛"实际在打排位），身份标签也没必要占位置。 -->
+    <view class="prosrc">{{pro.stat.name}} · {{pro.stat.hoursText}}</view>
+    <view wx:if="{{pro.stat.note}}" class="pro-note">{{pro.stat.note}}</view>
+
+    <!-- 英雄：前五做成头像卡，其余压成一行一个 -->
+    <view wx:if="{{pro.stat.hasHeroes}}" class="pblock">
+      <view class="pblock-h">
+        <text class="pblock-t">{{T.proHeroes}}</text>
+        <text class="pblock-n">{{pro.stat.heroTotalText}}</text>
+      </view>
+      <!-- 英雄选取：第一名做成"主推"（头像 128rpx），其余按名次成列（头像 88rpx）。
+           原来是五张同尺寸小卡（头像 85rpx）：头像虽在，但都很小、五格等宽互相挤，
+           而且"等尺寸卡片阵列当结构"正是 craft floor 明确反对的默认做法。
+           现在唯一的层级手段是**尺度落差**，头部大、其余成列，一眼看得出主次。 -->
+      <view wx:for="{{pro.stat.topHeroes}}" wx:key="zh" class="hpick {{item.rank === 1 ? 'hpick-top' : ''}}">
+        <view class="hpick-pic">
+          <image wx:if="{{item.hasIcon}}" class="hpick-ic" src="{{item.icon}}" mode="aspectFill"></image>
+        </view>
+        <view class="hpick-body">
+          <view class="hpick-line">
+            <text class="hpick-rank">{{item.rank}}</text>
+            <text class="hpick-name">{{item.main}}</text>
+            <text class="hpick-pct">{{item.pctText}}</text>
+          </view>
+          <view class="hpick-bar"><view class="hpick-fill" style="width: {{item.bar}}%"></view></view>
+        </view>
+      </view>
+      <view class="lrow" wx:for="{{expHeroes ? pro.stat.restHeroes : []}}" wx:key="zh">
+        <text class="lrow-rank">{{item.rank}}</text>
+        <image wx:if="{{item.hasIcon}}" class="lrow-ic" src="{{item.icon}}" mode="aspectFill"></image>
+        <text class="lrow-name">{{item.main}}</text>
+        <view class="lrow-bar"><view class="lrow-fill" style="width: {{item.bar}}%"></view></view>
+        <text class="lrow-pct">{{item.pctText}}</text>
+      </view>
+      <view wx:if="{{pro.stat.restCountText}}" class="pblock-sub pmore"
+            hover-class="pmore-on" bindtap="onToggleMore" data-k="heroes">
+        {{expHeroes ? T.proCollapse : pro.stat.restCountText}}
+      </view>
+    </view>
+
+    <!-- 三人组合：三个头像并排，名字一行放得下（原版名字串会折行，最难看的就这块） -->
+    <view wx:if="{{pro.stat.hasCombos}}" class="pblock">
+      <view class="pblock-h"><text class="pblock-t">{{T.proCombos}}</text></view>
+      <view class="crow" wx:for="{{expCombos ? pro.stat.combos : pro.stat.topCombos}}" wx:key="text">
+        <view class="crow-avs">
+          <image wx:if="{{item.hasAvatars}}" wx:for="{{item.avatars}}" wx:for-item="av" wx:key="*this"
+                 class="crow-av" src="{{av}}" mode="aspectFill"></image>
+        </view>
+        <view class="crow-txt">
+          <text class="crow-name">{{item.text}}</text>
+          <view class="crow-bar"><view class="crow-fill" style="width: {{item.bar}}%"></view></view>
+        </view>
+        <view class="crow-v">
+          <text class="crow-pct">{{item.pctText}}</text>
+          <text class="crow-n">{{item.nText}}</text>
+        </view>
+      </view>
+      <view class="crow" wx:for="{{expCombos ? pro.stat.restCombos : []}}" wx:key="text">
+        <view class="crow-avs">
+          <image wx:if="{{item.hasAvatars}}" wx:for="{{item.avatars}}" wx:for-item="av" wx:key="*this"
+                 class="crow-av" src="{{av}}" mode="aspectFill"></image>
+        </view>
+        <view class="crow-txt">
+          <text class="crow-name">{{item.text}}</text>
+          <view class="crow-bar"><view class="crow-fill" style="width: {{item.bar}}%"></view></view>
+        </view>
+        <view class="crow-v">
+          <text class="crow-pct">{{item.pctText}}</text>
+          <text class="crow-n">{{item.nText}}</text>
+        </view>
+      </view>
+      <view wx:if="{{pro.stat.hasMoreCombos}}" class="pblock-sub pmore"
+            hover-class="pmore-on" bindtap="onToggleMore" data-k="combos">
+        {{expCombos ? T.proCollapse : pro.stat.moreCombos}}
+      </view>
+    </view>
+
+    <!-- 枪械：没有图标（图标↔名字的配对还没做），所以做成带排名的紧凑行 -->
+    <view wx:if="{{pro.stat.hasWeapons}}" class="pblock">
+      <view class="pblock-h"><text class="pblock-t">{{T.proWeapons}}</text></view>
+      <view class="lrow" wx:for="{{expWeapons ? pro.stat.weapons : pro.stat.topWeapons}}" wx:key="main">
+        <text class="lrow-rank">{{item.rank}}</text>
+        <text class="lrow-name">{{item.main}}<text class="lrow-sub">{{item.sub}}</text></text>
+        <view class="lrow-bar"><view class="lrow-fill lrow-fill-w" style="width: {{item.bar}}%"></view></view>
+        <text class="lrow-pct">{{item.pctText}}</text>
+      </view>
+      <view class="lrow" wx:for="{{expWeapons ? pro.stat.restWeapons : []}}" wx:key="main">
+        <text class="lrow-rank">{{item.rank}}</text>
+        <text class="lrow-name">{{item.main}}<text class="lrow-sub">{{item.sub}}</text></text>
+        <view class="lrow-bar"><view class="lrow-fill lrow-fill-w" style="width: {{item.bar}}%"></view></view>
+        <text class="lrow-pct">{{item.pctText}}</text>
+      </view>
+      <view wx:if="{{pro.stat.hasMoreWeapons}}" class="pblock-sub pmore"
+            hover-class="pmore-on" bindtap="onToggleMore" data-k="weapons">
+        {{expWeapons ? T.proCollapse : pro.stat.moreWeapons}}
+      </view>
+    </view>
+
+    <view wx:if="{{pro.stat.hasPairs}}" class="pblock">
+      <view class="pblock-h"><text class="pblock-t">{{T.proPairs}}</text></view>
+      <view class="lrow" wx:for="{{expPairs ? pro.stat.pairs : pro.stat.topPairs}}" wx:key="main">
+        <text class="lrow-rank">{{item.rank}}</text>
+        <text class="lrow-name">{{item.main}}</text>
+        <view class="lrow-bar"><view class="lrow-fill lrow-fill-p" style="width: {{item.bar}}%"></view></view>
+        <text class="lrow-pct">{{item.pctText}}</text>
+      </view>
+      <view class="lrow" wx:for="{{expPairs ? pro.stat.restPairs : []}}" wx:key="main">
+        <text class="lrow-rank">{{item.rank}}</text>
+        <text class="lrow-name">{{item.main}}</text>
+        <view class="lrow-bar"><view class="lrow-fill lrow-fill-p" style="width: {{item.bar}}%"></view></view>
+        <text class="lrow-pct">{{item.pctText}}</text>
+      </view>
+      <view wx:if="{{pro.stat.hasMorePairs}}" class="pblock-sub pmore"
+            hover-class="pmore-on" bindtap="onToggleMore" data-k="pairs">
+        {{expPairs ? T.proCollapse : pro.stat.morePairs}}
+      </view>
+    </view>
+
+    <view class="note">{{T.proCaveat}}</view>
+    <view class="note">{{T.proMore}}</view>
+  </block>
+
+  <view class="sec-title">
+    {{T.predTitle}}
+  </view>
+
+  <view class="plats">
+    <view wx:for="{{predator}}" wx:key="code" data-code="{{item.code}}" bindtap="onPickPlatform"
+          class="plat {{platformLabels[platformIndex] === item.label ? 'plat-on' : ''}}">
+      <text class="plat-name">{{item.label}}</text>
+      <view class="plat-rp">{{item.rpText}}<text class="plat-rp-unit">RP</text></view>
+      <!-- 较昨日同期的涨幅。取不到对比基准时 deltaText 为空串，这一行整行不渲染 ——
+           绝不显示成 +0（那会让人以为底分真的一分没动）。
+           后面小字写清对比的是哪一条，否则"涨了多少"没有参照。 -->
+      <view wx:if="{{item.deltaText}}" class="plat-delta plat-delta-{{item.deltaUp ? 'up' : 'down'}}">
+        {{item.deltaText}}
+        <text class="plat-delta-b">{{item.deltaBasisText}}</text>
+      </view>
+      <view wx:if="{{item.predCountText}}" class="plat-mp">{{T.predUnit}} <text class="plat-mp-n">{{item.predCountText}}</text> {{T.peopleUnit}}</view>
+      <view wx:if="{{item.mastersText}}" class="plat-mp">{{T.mastersPred}} <text class="plat-mp-n">{{item.mastersText}}</text> {{T.peopleUnit}}</view>
+      <!-- 上游这份数据什么时候刷新的（不是我们取数的时间）。取不到就不显示。 -->
+      <view wx:if="{{item.updatedAtText}}" class="plat-time">{{item.updatedAtText}}</view>
+    </view>
+  </view>
+
+  <view class="note">
+    {{T.predNote1}}
+    {{T.predNote2}}
+    {{T.predNote3}}
+  </view>
+
+  <view class="note">
+    {{T.deltaNote1}}
+    {{T.deltaNote2}}
+  </view>
+
+  <!-- 广告位：未配置 unit-id 时整个组件不渲染（见 utils/ad.js）。
+       放在「分数线 + 口径说明」之后、「查玩家」之前 —— 第一屏之下第一个真正的分段处，
+       滑一下就见到；也不会把平台分数和它的说明切开（来这一页就是为了看那几行分数）。 -->
+  <view class="adbox">
+    <ad wx:if="{{adUnit}}" unit-id="{{adUnit}}" ad-intervals="60" binderror="onAdError"></ad>
+  </view>
+
+  <view class="sec-title" style="font-size: 27rpx; margin: 22rpx 0 14rpx;">{{T.lookupTitle}}</view>
+
+  <view class="lookup">
+    <input class="inp" placeholder="{{T.playerIdPlaceholder}}" placeholder-class="ph" value="{{playerInput}}"
+           bindinput="onPlayerInput" bindconfirm="onLookup" confirm-type="search" />
+    <picker range="{{platformLabels}}" value="{{platformIndex}}" bindchange="onPlatformChange">
+      <view class="picker">{{platformLabels[platformIndex]}}</view>
+    </picker>
+    <view class="btn {{playerLoading ? 'btn-disabled' : ''}}" bindtap="onLookup">{{T.query}}</view>
+  </view>
+
+  <view wx:if="{{playerErr}}" class="pres"><text class="inline-err">{{playerErr}}</text></view>
+
+  <view wx:elif="{{playerLoading}}" class="pres"><text class="skeleton">{{T.querying}}</text></view>
+
+  <view wx:elif="{{player}}" class="pres">
+    <view class="pres-name">{{player.name}}</view>
+    <view class="pres-meta">{{player.platform}}{{player.levelText}}{{player.seasonText}}</view>
+    <view class="kv">
+      <view class="kv-item">
+        <view class="kv-k">{{T.currentRank}}</view>
+        <view class="kv-v">{{player.rankText}}</view>
+      </view>
+      <view class="kv-item">
+        <view class="kv-k">{{T.rankScore}}</view>
+        <view class="kv-v {{player.rankScore === null ? 'kv-v-na' : ''}}">{{player.rankScoreText}}</view>
+      </view>
+      <view class="kv-item">
+        <view class="kv-k">{{T.predatorRank}}</view>
+        <view class="kv-v {{player.noLadder ? 'kv-v-na' : ''}}">{{player.ladderText}}</view>
+      </view>
+    </view>
+
+    <!-- 距猎杀线差额：分数线这一页本来就有，顺手算出来。
+         取不到就整块不显示，不显示「还差 0 分」。 -->
+    <view wx:if="{{gap}}" class="gap gap-{{gap.kind}}">
+      <view class="gap-row">
+        <text class="gap-k">{{gap.title}}</text>
+        <text class="gap-v">{{gap.value}}</text>
+        <text wx:if="{{gap.unit}}" class="gap-u">{{gap.unit}}</text>
+      </view>
+      <view wx:if="{{gap.note}}" class="gap-note">{{gap.note}}</view>
+    </view>
+
+    <view wx:if="{{player.noLadder}}" class="note">
+      {{T.ladderNote}}
+    </view>
+  </view>
+
+  <!-- ================= 本赛季段位分布 =================
+       来源是上游那个**没被人机校验挡的 JSON 接口**（见云函数 rankdist.js），
+       所以这一块是实时的，不像 ALGS 那样是离线快照。
+       它回答的是别处都没有的那个问题：我这个段位，在全体排位玩家里算什么水平。
+       查过某人之后，他的大段会被标出来（**同时给文字标记，不只靠颜色**）。 -->
+  <block wx:if="{{rank}}">
+    <view class="sec-title" style="margin-top: 32rpx;">
+      {{T.rankTitle}}
+      <text class="sec-hint">{{T.rankHint}}</text>
+    </view>
+
+    <!-- 你在哪：只有查到人、而且认得他的大段时才出现 -->
+    <view wx:if="{{rank.mine.has}}" class="mine">
+      <view class="mine-h">
+        <text class="mine-k">{{T.rankMine}}</text>
+        <text class="mine-tier">{{rank.mine.tierLabel}}</text>
+      </view>
+      <text class="mine-t">{{rank.mine.sameText}}</text>
+      <text class="mine-t">{{rank.mine.aboveText}}</text>
+      <text class="mine-t">{{rank.mine.belowText}}</text>
+    </view>
+
+    <view wx:for="{{rank.rows}}" wx:key="key" class="rrow {{item.mine ? 'rrow-mine' : ''}}">
+      <view class="rrow-l">
+        <text class="rrow-name">{{item.main}}</text>
+        <text wx:if="{{item.mine}}" class="rrow-tag">{{T.rankMine}}</text>
+      </view>
+      <view class="rrow-bar"><view class="rrow-fill" style="width: {{item.bar}}%"></view></view>
+      <view class="rrow-v">
+        <text class="rrow-pct">{{item.pctText}}</text>
+        <text class="rrow-n">{{item.playersText}}</text>
+      </view>
+    </view>
+
+    <view class="note">{{rank.sampleText}} · {{rank.updatedText}}</view>
+    <view class="note">{{rank.caveat}}</view>
+  </block>
+
+  <!-- 战队专区：职业选手排位分（名单在云函数 curated_roster_resolved.json） -->
+  <block wx:if="{{teams.length}}">
+    <view class="sec-title" style="margin-top: 32rpx;">
+      {{T.teamsTitle}}
+      <text class="sec-hint">{{T.teamsHint}}</text>
+    </view>
+
+    <view wx:for="{{teams}}" wx:key="id" class="team">
+      <view class="team-name">{{item.name}}</view>
+      <view wx:for="{{item.players}}" wx:for-item="n" wx:key="uid" class="team-player">
+        <view class="tp-left">
+          <text class="tp-ign">{{n.ign}}</text>
+          <text wx:if="{{n.input}}" class="tp-tag">{{n.input}}</text>
+          <text wx:if="{{n.nation}}" class="tp-nation">{{n.nation}}</text>
+        </view>
+        <view class="tp-right">
+          <text class="tp-rp">{{n.rankScoreText}}</text>
+          <text wx:if="{{n.rankName}}" class="tp-rank">{{n.rankName}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="note">{{T.teamsNote}}</view>
+  </block>
+
+  <view class="foot">
+    {{T.foot1}}
+    {{T.foot2}}
+  </view>
+</view>

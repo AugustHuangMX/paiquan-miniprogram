@@ -1,0 +1,7 @@
+{
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "当前地图轮换",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "light",
+  "backgroundColor": "#0a0c10"
+}

@@ -1,0 +1,1164 @@
+/* 全局样式 */
+/* ---------- 主题变量 ----------
+   所有颜色收在这一层，规则里只写 var(--x) —— 切主题只换这里的值。
+   深色是默认（定义在 page 上）；浅色在 .wrap.theme-light 上覆盖同名变量。
+   页面背景由 .wrap 自己铺（page 那层只在回弹时露出来，由 wx.setBackgroundColor 同步）。
+
+   面的层次用三级，别再加第四级：
+     --bg      页面底
+     --card    卡片（正常放在页面底上）
+     --raised  卡中卡（只有确实嵌在卡片里的东西才用它）
+   --sunken 专给"要被盖住的图"留占位。
+
+   强调色**刻意拆成两个**，因为它们的最优值在数学上不重合
+   （算式见 .dsh/skills/apex-miniapp-ui/reference/tokens.md）：
+     --accent      填充用：白字压在上面，要够深（4.85:1）
+     --accent-ink  文字用：画在页面上当文字，要够亮（深色底上 6.37:1）
+   同一个红要同时干这两件事只能取折中值 —— 填充那个红当文字时只有 4.04:1，不达标。
+   所以按用途分两个令牌，而不是硬凑一个"万能红"。 */
+page {
+  --bg: #0a0c10;          /* 页面底 */
+  --sunken: #0f131a;      /* 图片占位 / 下沉块 */
+  --card: #141821;        /* 卡片 */
+  --raised: #252c38;      /* 卡中卡：比卡片亮一档 */
+  --track: #242a34;       /* 进度槽 / 分隔线 */
+  --line: #252c38;        /* 边框 */
+  --ink: #eef1f6;         /* 主文字 */
+  --ink2: #9aa4b4;        /* 次文字 */
+  --ink3: #8b95a6;        /* 弱文字（正文仍要 ≥4.5:1） */
+  --glass: rgba(255, 255, 255, 0.04);
+  --accent: #d92b2b;      /* 填充用（白字压其上 4.85:1） */
+  --accent-ink: #ff5a52;  /* 强调色**当文字**时用这个 */
+  --up: #3ddc84;
+  --down: #ff5252;
+  --warn: #ffb020;
+  --ok-ink: #3ddc84;
+  --err-ink: #ffb3b3;
+  --warn-ink: #ffd591;
+  --info-ink: #a9cfff;
+
+  /* ---------- 排版令牌 ----------
+     字号 7 档，含微信官方列出的全部 5 档（22/17/15/14/12pt）。
+     24rpx（12pt）是**下限**：比它小的说明文字一律提到 24rpx，
+     而不是"再挤一档" —— 官方最小档就是 12pt。
+
+     ⚠️ 这些令牌**不随主题变**，所以浅色块里**不要再抄一遍**。
+     tests/theme.test.mjs 会按 /^(fs|fw|sp|r)-/ 前缀把它们识别为"共享令牌"，
+     只要求"定义过"，不要求两套主题各有一份。 */
+  --fs-display: 44rpx;    /* 22px 倒计时大数字（官方最大档） */
+  --fs-title: 40rpx;      /* 20px 地图名 / 分数线 */
+  --fs-head: 34rpx;       /* 17px 卡片主标题（官方正文档） */
+  --fs-section: 30rpx;    /* 15px 区块标题（官方小标题档） */
+  --fs-body: 28rpx;       /* 14px 正文（官方正文档） */
+  --fs-sub: 26rpx;        /* 13px 次要说明 */
+  --fs-min: 24rpx;        /* 12px 下限（官方最小档） */
+  --fw-body: 400;
+  --fw-bold: 700;
+  --fw-num: 800;          /* 只给大数字 */
+
+  /* ---------- 间距令牌：全部落在 4rpx 网格上 ---------- */
+  --sp-1: 4rpx;
+  --sp-2: 8rpx;
+  --sp-3: 12rpx;
+  --sp-4: 16rpx;
+  --sp-5: 20rpx;
+  --sp-6: 24rpx;
+  --sp-8: 32rpx;
+  --sp-16: 64rpx;
+
+  /* ---------- 圆角令牌 ---------- */
+  --r-sm: 8rpx;           /* 小片：chip / 标签 / 勾选框 */
+  --r-md: 12rpx;          /* 图片带 */
+  --r-lg: 16rpx;          /* 提示块 */
+  --r-xl: 24rpx;          /* 页面级卡片 */
+  --r-full: 999rpx;       /* 胶囊 */
+}
+
+/* 浅色。绿/红/琥珀在深色下够亮，直接搬到白底上对比度只剩 2 左右（看不清），
+   所以这几个彩色文字都换成同色系的深色版；中性色按白底 ≥4.5:1 挑。 */
+.wrap.theme-light {
+  --bg: #f5f6f8;
+  --sunken: #eceef2;
+  --card: #ffffff;
+  --raised: #eef1f5;        /* 卡中卡：比卡片暗一档，"卡中卡"才看得出来 */
+  --track: #e6e9ee;
+  --line: #e2e5eb;
+  --ink: #171a20;
+  --ink2: #545f6e;
+  --ink3: #5f6a79;
+  --glass: rgba(0, 0, 0, 0.04);
+  --accent: #d92b2b;        /* 填充用：白字压其上 4.85:1 */
+  --accent-ink: #c62828;    /* 当文字用：白底上 5.62:1 */
+  --up: #0e7c43;
+  --down: #c62828;
+  --warn: #a86a00;
+  --ok-ink: #0f6b3a;
+  --err-ink: #b02525;
+  --warn-ink: #8a5a00;
+  --info-ink: #2b5fa8;
+}
+
+page {
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 28rpx;
+  /* 行高 1.6 与字体族都取自 WeUI 官方（唯一给得出准确数值的官方来源）：
+     .weui-wxss dist/style/weui.wxss 里 page{line-height:1.6;font-family:system-ui,...} */
+  line-height: 1.6;
+  font-family: system-ui, -apple-system, "Helvetica Neue", sans-serif;
+}
+
+.wrap {
+  /* 页面边距 32rpx = 16px，和 WeUI 的 .weui-msg / .weui-cell 内边距同一档 */
+  padding: 32rpx 32rpx 64rpx;
+  /* 中文字形笔画多，默认行高（约 1.2）会让上下两行贴到一起、看着像"字重叠"。
+     统一给足行高；地图页的卡片在下面单独压回 1.35，免得把广告顶出第一屏。 */
+  line-height: 1.6;
+  /* 背景铺在 .wrap 上而不是只靠 page：主题变量挂在 .wrap 上，
+     page 那层拿不到浅色值，不铺就会在浅色主题下露出一整块深色底。 */
+  background: var(--bg);
+  /* 颜色也必须在 .wrap 上再声明一次。
+     page 里的 color: var(--ink) 是在**page 那一层**算好的（深色的近白色），
+     子元素继承的是算好的颜色而不是变量 —— 浅色下没写 color 的文字
+     （.sec-title / .plat-rp 这类）就还是近白色，白底上完全看不见。
+     这一行让它们改从 .wrap 继承。 */
+  color: var(--ink);
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* ---------- 中英文切换（左上角） ---------- */
+/* 用显式 class 而不是 :first-child/:last-child —— WXSS 只推荐 class 选择器 */
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
+.langsw { display: flex; align-items: center; }
+/* 语言开关和主题开关并排放在左上角 */
+.switches { display: flex; align-items: center; }
+.langsw-2 { margin-left: 12rpx; }
+.langsw-i {
+  font-size: 24rpx;
+  line-height: 1;
+  /* 两半等宽：写 "Dark" / "Light" 这种长度不一的词时，不等宽会显得歪 */
+  min-width: 88rpx;
+  text-align: center;
+  box-sizing: border-box;
+  padding: var(--sp-3) var(--sp-5);
+  border: 1rpx solid var(--line);
+  color: var(--ink3);
+  background: var(--card);
+}
+.langsw-l { border-radius: 999rpx 0 0 999rpx; }
+.langsw-r { border-radius: 0 999rpx 999rpx 0; border-left: none; }
+.langsw-on { color: #ffffff; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+
+/* ---------- 提示条 ---------- */
+.msg {
+  border-radius: 16rpx;
+  padding: 24rpx;
+  font-size: 26rpx;
+  margin-bottom: 24rpx;
+  border: 1rpx solid;
+}
+.msg-err { background: rgba(255, 82, 82, 0.10); border-color: rgba(255, 82, 82, 0.35); color: var(--err-ink); }
+.msg-warn { background: rgba(255, 176, 32, 0.10); border-color: rgba(255, 176, 32, 0.35); color: var(--warn-ink); }
+.msg-info { background: rgba(88, 166, 255, 0.10); border-color: rgba(88, 166, 255, 0.35); color: var(--info-ink); }
+.msg-title { font-weight: 700; display: block; margin-bottom: 8rpx; }
+.msg-body { display: block; font-size: 26rpx; opacity: 0.92; }
+
+/* ---------- 区块标题 ---------- */
+.sec-title {
+  display: flex;
+  align-items: center;
+  margin: 20rpx 0 16rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+.sec-title::before {
+  content: "";
+  width: 6rpx;
+  height: 30rpx;
+  background: var(--accent);
+  border-radius: 4rpx;
+  margin-right: 16rpx;
+}
+.sec-hint {
+  margin-left: auto;
+  font-size: 26rpx;
+  font-weight: 400;
+  color: var(--ink3);
+  letter-spacing: 0.5rpx;
+}
+
+/* ---------- 地图卡片：自上而下四行 ---------- */
+/* 顺序由 viewmodel 的 MODE_ORDER 决定：匹配 → 排位 → 外卡 → 轮换 */
+/* ⚠️ 下面这组 .wrap-fill / .mrow-fill 是**死代码**：要配合 WXML 上的
+   class="wrap wrap-fill" 才生效，而三个页面都没用这个类
+   （maps.wxml 写的是 class="wrap theme-{{theme}}"）。
+   所以"四行自动平分一屏"这件事**从来没生效过**，.mband 一直就是它写死的高度。
+   四行能不能塞进一屏，只能把真实高度算下来（见下面 .mrow 的算式）。
+   保留它们是因为删除属于另一轮清理；改高度时别指望它们。 */
+.rows { display: flex; flex-wrap: wrap; justify-content: space-between; }
+/* box-sizing 必须显式写：默认是 content-box，那么 width:48.5% 之外还要再加
+   padding 32rpx 和 border 2rpx，两张紧凑卡加起来就超过 100% 了 → 会换行。
+   踩过这个坑：外卡和轮换怎么都并不到一行。 */
+.mrow { width: 100%; box-sizing: border-box; }
+/* 半宽卡：**必须用 flex-basis 而不是只写 width** ——
+   在 flex 行里 flex-basis 的优先级高于 width，只写 width 时
+   任何一条同优先级的 `width: 100%`（比如上面那条 .mrow）都可能把它压回去，
+   表现就是"外卡和轮换永远排成完整一行"。flex: 0 0 48.5% 同时钉死
+   不放大、不缩小、宽度 48.5%，两张加起来 97% 正好并排。 */
+.mrow-compact { flex: 0 0 48.5%; width: 48.5%; }
+/* 置顶的那个模式：主题色描边 + 稍亮的面，让它在四张卡里一眼被认出来 */
+.mrow-pin {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1rpx var(--accent) inset;
+}
+.wrap-fill {
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.wrap-fill .rows { flex: 1; }
+/* 只有带照片的行参与"撑满"，轮换那个紧凑版保持自己的自然高度 */
+.wrap-fill .mrow-fill { display: flex; flex-direction: column; flex: 1; }
+.wrap-fill .mplain { flex: 1; }
+/* 卡片本身。**一行的高度预算是算出来的**（375px 基准，1px = 2rpx）：
+     iPhone 12/13 可视高                       1288rpx
+     − 导航栏（状态栏 40 + 导航 88）            128
+     − 导航下间距                                12
+     − .wrap 上边距 / 下边距                  32 / 64
+     − 页脚（边距 32 + 内边距 24 + 两行 84）    133
+     = 919rpx 给四行 → 每行约 230rpx
+   一行 = .mrow 边框 2 + 内边距 32 + .mband 190 = 224rpx，再加行间距 20 → 244rpx
+   四行 = 4 × 224 + 3 × 20 = 956rpx，比 919 多 37rpx。
+   所以**广告位当前是空的**（AD_UNITS 为空、整块不渲染）时能整屏放下；
+   广告一开通就要挤掉第四行末尾 —— 这是明确取舍，不是 bug。
+   行间距（20）比卡内边距（16）大一档，是有意的：卡内比卡间紧，
+   才看得出"哪些内容是一组"，四行之间也有节奏。 */
+.mrow {
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-xl);
+  /* 卡片内部保持紧凑行高：地图页第一屏的高度是算死的 */
+  line-height: 1.35;
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+.mband {
+  position: relative;
+  /* 高度演变：235 → 190 → 215
+     190 那一版是为了"第四行不用滑"把照片带压低（见下），但 2026-10 用户截图反馈
+     **第四行下面还空着一块**（"轮换模式下面还有空缺"）。
+     按截图量：第 4 行底线 y≈790/949、"地图工具"标题 y≈865/949，
+     空缺≈75px≈屏高 7.9%≈102rpx（1288rpx 基准）；四行平摊 → 每条 +25rpx，
+     于是 190 → 215，正好把空缺吃掉而不把第四行推出屏幕。
+     ⚠️ 照片带高度是这一页唯一的"高度预算旋钮"：改大填满、改小留白，
+        改完必须重新确认"第四行还在第一屏内"。
+     min-height 160 保留作兜底（旧基础库下也不会塌掉）。 */
+  height: 215rpx;
+  min-height: 160rpx;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--sunken);
+}
+/* 没有实景图的完整大卡：照片区的字是**白色**的（本来压在照片上），
+   浅色主题下没有底图就变成白字白底、完全看不见。
+   所以给一条深色渐变兜底 —— 两个主题下都保持"深底白字"，可读性一致。
+   这是**故意跨主题固定**的深色，和 #ffffff 同类（照片上的白字两个主题都成立），
+   所以用 rgba 而不是主题变量，避免浅色主题把它算成"浅色底"。 */
+.mband-empty { background: linear-gradient(135deg, rgba(30, 37, 48, 1) 0%, rgba(16, 20, 27, 1) 100%); }
+.mimg { display: block; width: 100%; height: 100%; }
+/* 没有实景照的模式（轮换的小区域图）：配色占位块，不显示碎图 */
+.mimg-ph { opacity: 0.25; }
+/* 上下两层渐变：模式名和地图名都压在照片上，靠它保证可读性 */
+.mscrim { position: absolute; left: 0; right: 0; pointer-events: none; }
+.mscrim-top { top: 0; height: 46%; background: linear-gradient(to bottom, rgba(0, 0, 0, 0.66), rgba(0, 0, 0, 0)); }
+.mscrim-bot { bottom: 0; height: 72%; background: linear-gradient(to top, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0)); }
+
+/* 模式名：压在照片左上角。它是**编号**不是标题 —— 所以做得克制：
+   24rpx + 700 让位给下面的大字（地图名 / 倒计时）。
+   以前它和地图名一样抢眼，一张卡上两个"标题"打架，视觉重心是散的。 */
+.mchip {
+  position: absolute;
+  left: var(--sp-4);
+  top: var(--sp-3);
+  background: rgba(0, 0, 0, 0.62);
+  border-radius: var(--r-sm);
+  padding: var(--sp-1) var(--sp-3);
+}
+/* 字号只留三档：44（倒计时）/ 40（地图名）/ 24（其余全部）。
+   之前一张卡上有 8 个不同字号（22/24/28/32/36/36/40/40）、3 种字重，
+   近邻字号互相打架 —— 那是"看着丑"的根因。
+   字重也只留 400 / 700：800 用在中文上是合成加粗，会发虚发胖。
+   （令牌是 44/40/34/30/28/26/24，这里只用其中三档。） */
+.mchip-t {
+  font-size: var(--fs-min);
+  font-weight: var(--fw-bold);
+  color: #ffffff;
+}
+/* 照片上的文字分两行：第一行地图名 + 倒计时，第二行本场时段 + 玩法角标。
+   竖排是为了省掉照片下面那整行（那样照片就能做得更高）。 */
+.mover {
+  position: absolute;
+  left: var(--sp-4); right: var(--sp-4); bottom: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+}
+.mrowline {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+/* 倒计时做成"带标题的数字"：小标题在上、数字在下、整体右对齐。
+   以前是 40rpx 的数字紧贴 22rpx 的"后轮换"，一大一小并排 —— 就是"突兀"的来源。 */
+.cdstack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex: none;
+  margin-left: var(--sp-4);
+}
+.cdlab {
+  font-size: var(--fs-min);
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.78);
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.9);
+}
+/* 倒计时是这张卡的**信息主角**（用户 90% 是来看"还剩多久"的），
+   所以给它整页最大的字号 44rpx（官方最大档），并用 800 字重压住视觉重心。
+   它是拉丁数字，不受"中文合成加粗发虚"那条限制。 */
+.cd {
+  font-size: var(--fs-display);
+  font-weight: var(--fw-num);
+  line-height: 1.05;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;   /* 等宽数字：秒数跳动时不会左右抖 */
+  text-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.9);
+}
+.cd-urgent { color: var(--warn); }
+.msubline {
+  display: flex;
+  align-items: center;
+  margin-top: var(--sp-2);
+}
+.msub {
+  font-size: var(--fs-min);
+  color: rgba(255, 255, 255, 0.84);
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.9);
+}
+/* 角标（"大逃杀匹配"这类）已经从卡片上去掉了：
+   它和模式名（"匹配模式地图"）说的是同一件事，挤在一起就是重复。
+   视图模型仍然会产出 item.tag，想恢复只要把 WXML 里那两处加回来。 */
+.mapname {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  line-height: 1.1;
+  color: #ffffff;
+  text-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.9);
+}
+.mo-off { font-size: var(--fs-head); font-weight: var(--fw-bold); }
+/* 照片下方只留「接着轮换」一行（紧凑版卡片里还有模式名那一行） */
+.mfoot { display: flex; align-items: center; flex-wrap: wrap; padding: var(--sp-3) var(--sp-1) 0; }
+.mfoot-tight { padding: 0 0 var(--sp-3); }
+
+/* ---------- 没有实景照的模式（轮换）：紧凑版，不留空图区 ---------- */
+/* 左边一条该模式的配色竖条提供"身份色"，右边大字地图名。
+   轮换 15 分钟一次，所以不摊开成大横幅，压缩成两行更好用。 */
+.mplain { display: flex; align-items: stretch; }
+.mbar { width: 8rpx; border-radius: var(--r-sm); flex: none; }
+.mplain-main { flex: 1; min-width: 0; margin-left: var(--sp-4); }
+.mplain-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: var(--sp-2);
+}
+.mplain-name {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-bold);
+  line-height: 1.1;
+  color: var(--ink);
+  word-break: break-all;
+}
+/* 卡片底色上的倒计时：不带照片，所以不用白字和阴影，但字号和照片版保持一致 */
+.cd-dark { color: var(--ink); text-shadow: none; }
+.cdlab-dark { color: var(--ink3); text-shadow: none; }
+/* 紧凑卡片里的模式名。字号跟照片卡片左上角那个底片保持一致（24rpx），
+   靠 700 字重拉开层次，不再另起一档字号。 */
+.mlabel { font-size: var(--fs-min); font-weight: var(--fw-bold); color: var(--ink); }
+/* 轮换模式的玩法标签（控制 / 团队死斗…）。轮换卡片没有地图照片，
+   这一条是"现在到底在玩什么"的唯一来源，所以要显眼一点。
+   标签色用 --accent-ink（**当文字用**的红），不是填充那个红。 */
+.mevt {
+  margin-left: var(--sp-3);
+  font-size: var(--fs-min);
+  font-weight: var(--fw-bold);
+  color: var(--accent-ink);
+  background: var(--raised);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--sp-1) var(--sp-3);
+}
+/* 压在照片上的那一版：照片是深色画面，用白字 + 阴影 */
+.mevt-img {
+  margin-left: var(--sp-3);
+  font-size: var(--fs-min);
+  color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.9);
+}
+/* 注意：.mapname / .cd / .cdlab / .cd-urgent 的定义在上面的「地图卡片」块里，
+   这里**不能再写一份** —— 同优先级下后写的会覆盖先写的，
+   之前就是因为这里残留了一整套旧值（34rpx/800、38rpx/800），
+   把上面改好的排版全盖掉了，界面上看到的还是旧样式。 */
+.span { font-size: var(--fs-min); color: var(--ink2); }
+.pbar {
+  height: 6rpx;
+  background: var(--track);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  margin: var(--sp-2) 0 0;
+}
+/* 照片里的进度条必须绝对定位：.mband 是固定高度 + overflow:hidden，
+   而 .mimg 是 height:100%，正常流里的 .pbar 会被挤到容器外**整条裁掉**。 */
+.pbar-abs {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  margin: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.22);
+}
+.pbar-in { height: 100%; }
+/* 单段式开关（比如顶部那个「模式」），两端都要圆角 */
+.langsw-1 { border-radius: var(--r-full); }
+/* 顶部那个 ⚙ 设置：它是**唯一**占这一行高度的东西，做得矮一点省高度。
+   字号提到 24rpx（官方最小档）—— 原先是 22rpx，比官方下限还小。 */
+.langsw-gear { padding: var(--sp-1) var(--sp-4); font-size: var(--fs-min); }
+/* 赛季倒计时。
+   原来是一行两端对齐：左边小标签、右边大红字 —— 标签 24rpx 挤在 32rpx 的红字旁边，
+   看着像没做完。改成上下两行：标签当说明、数字当主角，数字给到 44rpx。 */
+.seasonline {
+  background: var(--raised);
+  border: 1rpx solid var(--line);
+  /* 原来是一条 6rpx 的强调色左边框。粗左边框是"卡片装饰"的默认套路，
+     它不表达任何信息，只是让每条内容看起来像警告 —— 所以去掉，
+     改用顶部一条 2rpx 的强调色细线：同样的"这是本季"信号，但轻得多。 */
+  border-top: 2rpx solid var(--accent);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-6);
+  margin-bottom: var(--sp-5);
+}
+.seasonline-t {
+  display: block;
+  font-size: 26rpx;
+  color: var(--ink2);
+  margin-bottom: 6rpx;
+}
+.seasonline-v {
+  display: block;
+  font-size: 44rpx;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--accent-ink);
+}
+
+/* 需要显眼一句话的地方（比如"数据来自第三方、可能查不到"）。
+   左侧一条粗的警示色边 + 加粗字 —— 在深浅两个主题下都能看清。 */
+.warnline {
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-bold);
+  line-height: 1.6;
+  color: var(--warn-ink);
+  background: var(--raised);
+  /* 同 .seasonline：粗左边框改成整圈细边框 + 略深的面，
+     让"注意"由字重和颜色承担，而不是靠一条色带。
+     原先用 --warn 那个琥珀色当小字，只有 3.5:1，不够读，改用 --warn-ink。 */
+  border: 1rpx solid var(--warn);
+  border-radius: var(--r-sm);
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+
+/* 一行小提示（比如"匹配默认收起"）。不抢戏、也不占太多高度。 */
+.tip {
+  display: flex;
+  align-items: center;
+  font-size: var(--fs-min);
+  line-height: 1.5;
+  color: var(--ink3);
+  background: var(--raised);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-4);
+  margin-bottom: var(--sp-3);
+}
+.tip-t { flex: 1; min-width: 0; }
+/* 「不再显示」：可点，所以给足点击面积（微信适老化指南要求 ≥40×40pt）。
+   颜色用 --accent-ink：它是画在次级面上的**文字**，不是填充 ——
+   填充那个红当文字时在深色底上只有 3.66:1，不够读。 */
+.tip-x {
+  flex: none;
+  margin-left: var(--sp-4);
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--accent-ink);
+  border: 1rpx solid var(--accent-ink);
+  border-radius: var(--r-full);
+  font-size: var(--fs-min);
+}
+
+/* ---------- 自定义导航栏（地图页用） ---------- */
+/* 负外边距是为了**冲出 .wrap 的内边距** —— 导航栏必须通栏，
+   而它在 .wrap 里面（主题变量挂在 .wrap 上，不能挪出去）。 */
+.navbar {
+  display: flex;
+  align-items: center;
+  margin: -32rpx -32rpx 12rpx;
+  padding-left: 24rpx;
+  padding-right: 0;
+  background: var(--bg);
+  box-sizing: content-box;
+}
+/* 56→64rpx：微信《适老化与无障碍设计指南》要求热区 ≥40×40pt（=80×80rpx）。
+   这个按钮是页面唯一的设置入口，原来 56rpx 只有 28pt。
+   右边还要给"上游数据时间"留位置，所以 64rpx 是这一行里的上限。 */
+.navbtn {
+  flex: none;
+  width: 64rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  text-align: center;
+  font-size: 32rpx;
+  color: var(--ink2);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-full);
+}
+.navbtn-on { color: #ffffff; background: var(--accent); border-color: var(--accent); }
+.navtitle { margin-left: var(--sp-4); font-size: var(--fs-section); font-weight: var(--fw-bold); color: var(--ink); }
+/* 22→24rpx：原值在官方最小档（12pt）之下。它是"数据什么时候更新的"，要读的实义信息。 */
+.navtime { margin-left: auto; font-size: var(--fs-min); color: var(--ink3); }
+.navspace { flex: none; }
+
+/* ---------- 模式选择面板（Windows 文件夹式勾选列表） ---------- */
+/* ⚠️ .panel 的定义只在**一处**（在下面「猎杀榜」那一段）。
+   这里以前还有一条重复定义，两条同名规则里后者覆盖了前者的 padding/圆角，
+   而前者的 margin-bottom 却活了下来 —— 读到的那份和生效的那份不是同一份，
+   "改了一处没反应"就是这么来的。地图页的 ⚙ 面板、猎杀榜、职业组合共用 .panel。 */
+.panel-t {
+  font-size: var(--fs-min);
+  font-weight: var(--fw-bold);
+  color: var(--ink2);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1rpx solid var(--track);
+}
+.panel-hint { font-size: var(--fs-min); font-weight: var(--fw-body); color: var(--ink3); margin-left: var(--sp-3); }
+.panel-row { display: flex; align-items: center; padding: var(--sp-4) var(--sp-1); }
+/* 勾选框 34→40rpx：实际点击面积由整行 .panel-row 保证，这里只是让"勾"看得清 */
+.panel-box {
+  width: 40rpx;
+  height: 40rpx;
+  flex: none;
+  box-sizing: border-box;
+  border: 2rpx solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  color: #ffffff;
+  font-size: var(--fs-min);
+  line-height: 36rpx;
+  text-align: center;
+}
+.panel-on { background: var(--accent); border-color: var(--accent); }
+.panel-name { margin-left: var(--sp-4); font-size: var(--fs-body); color: var(--ink); }
+
+/* ---------- 轮换时间表（展开式） ---------- */
+.schedbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14rpx;
+  padding: 12rpx;
+  border: 1rpx solid var(--line);
+  border-radius: 8rpx;
+  background: var(--raised);
+}
+.schedbtn-t { font-size: var(--fs-min); color: var(--ink2); }
+.schedbtn-a { font-size: var(--fs-min); color: var(--ink3); margin-left: var(--sp-3); }
+.sched { margin-top: 12rpx; }
+.sched-load { font-size: 24rpx; color: var(--ink3); padding: 12rpx 0; }
+.sched-g { margin-top: 12rpx; }
+.sched-gh {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: var(--ink2);
+  padding-bottom: 8rpx;
+  border-bottom: 1rpx solid var(--track);
+}
+/* 两列排：15 分钟一场，一天 96 格，排成两列才不至于拉出一条长龙 */
+.sched-rows { display: flex; flex-wrap: wrap; }
+.sched-r {
+  width: 50%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: baseline;
+  padding: 8rpx 8rpx 8rpx 0;
+}
+.sched-t {
+  font-size: 24rpx;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.sched-m {
+  font-size: 24rpx;
+  color: var(--ink2);
+  margin-left: 12rpx;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sched-e { font-size: var(--fs-min); color: var(--ink3); flex: none; margin-left: var(--sp-2); }
+
+/* 紧凑卡（半宽）：外卡和轮换都不用照片，所以文字有地方了。
+   注意：maps.js 现在把 compact 一律设成 false，所以这一组当前**不生效**；
+   保留是因为样式和模板都还在，想恢复并排只需改 maps.js 那一行。 */
+.mrow-compact .mplain-name {
+  font-size: var(--fs-head);
+  line-height: 1.25;
+  word-break: break-word;
+}
+.mrow-compact .cd { font-size: var(--fs-head); }
+.mrow-compact .cdlab { font-size: var(--fs-min); }
+.mrow-compact .mplain-main { padding-bottom: var(--sp-1); }
+/* 半宽的两张紧凑卡**底部对齐**：同一行里让它们等高拉伸
+   （之前写了 align-self: flex-start，两张各自按内容走，底边就参差不齐了）。 */
+.mrow-compact { align-self: stretch; }
+/* 「接着轮换」的每一段文字**任何情况下都不许在词中间断行** ——
+   半宽卡里出现过"碎/片""团队死/斗"，全宽时更是被挤成竖排。 */
+.next-map, .next-evt, .next-time { white-space: nowrap; }
+/* 有玩法的那种（轮换）：**只在半宽卡里**竖排成两行，第二行"玩法 …… 时间"两端对齐。
+   全宽时还是老样子 —— "接着轮换 地图 时间"一行内联（用户要求改回这个版本）。 */
+.mrow-compact .next-col { flex-direction: column; align-items: stretch; }
+.next-rest { display: flex; align-items: baseline; justify-content: space-between; }
+.next-rest .next-time { margin-left: 12rpx; }
+
+/* 半宽卡（外卡 + 轮换并排）里再收紧一点 */
+.mrow-compact .nexts { display: block; }
+.mrow-compact .nexts-t { display: block; margin-right: 0; margin-bottom: var(--sp-2); }
+.mrow-compact .next-item { margin-right: 0; margin-bottom: var(--sp-3); }
+.mrow-compact .next-map { flex: 1 1 auto; font-weight: 700; }
+.mrow-compact .next-evt { margin-left: 0; }
+.mrow-compact .next-time { margin-left: auto; }
+/* 紧凑卡是半宽的，时间表在里面排两列会挤 —— 这个宽度下改单列 */
+.mrow-compact .sched-r { width: 100%; }
+
+/* 接着轮换：压成一行内联，省高度（四行要挤进一屏） */
+.nexts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-2);
+  border-top: 1rpx solid var(--track);
+}
+/* 字间距统一加一点：中英数字混排时默认间距看着不匀（用户反馈"每个字的间距平均点"） */
+.nexts-t { font-size: 24rpx; color: var(--ink3); margin-right: var(--sp-4); letter-spacing: 1rpx; }
+.next-item {
+  display: flex;
+  align-items: baseline;
+  font-size: 24rpx;
+  color: var(--ink);
+  margin-right: var(--sp-5);
+  margin-bottom: var(--sp-1);
+  letter-spacing: 0.5rpx;
+}
+.next-map { color: var(--ink); }
+.next-evt { color: var(--ink3); font-size: 24rpx; margin-left: 8rpx; }
+.next-time { margin-left: 8rpx; color: var(--ink3); font-variant-numeric: tabular-nums; }
+.empty-name { font-size: 30rpx; font-weight: 700; color: var(--ink3); }
+.empty-tip { font-size: 24rpx; color: var(--ink3); margin-top: 8rpx; }
+
+/* ---------- 猎杀榜 ---------- */
+/* 这是 .panel 的**唯一**定义（地图页的 ⚙ 面板 / 猎杀榜 / 职业英雄组合共用）。
+   圆角与内边距取令牌，和页面级卡片（--r-xl / --sp-6）同档。 */
+.panel {
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+  margin-bottom: var(--sp-4);
+}
+.plats { display: flex; flex-wrap: wrap; justify-content: space-between; }
+.plat {
+  width: 48.5%;
+  box-sizing: border-box;
+  background: var(--raised);
+  border: 1rpx solid var(--line);
+  border-radius: 14rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
+}
+.plat-name { font-size: 24rpx; color: var(--ink2); }
+/* 选中的平台卡片：可点，所以要有明确的选中态，否则用户不知道自己点了没有 */
+.plat-on {
+  border-color: var(--accent);
+  background: var(--track);
+}
+.plat-on .plat-name { color: var(--ink); font-weight: 700; }
+.plat-rp { font-size: 40rpx; font-weight: 800; font-variant-numeric: tabular-nums; margin: 8rpx 0 4rpx; }
+.plat-rp-unit { font-size: 26rpx; font-weight: 700; color: var(--ink2); margin-left: 4rpx; }
+.plat-mp { font-size: 24rpx; color: var(--ink3); }
+.plat-mp-n { color: var(--ink2); font-weight: 700; }
+
+/* ---------- 猎杀底分的涨幅与数据时间 ---------- */
+/* 底分涨了 = 想冲猎杀的人更难了（琥珀提醒）；跌了 = 好事（绿色）。
+   数字本身始终带正负号，颜色只是辅助，不靠颜色表意。 */
+.plat-delta { font-size: 26rpx; font-weight: 700; margin: 2rpx 0; font-variant-numeric: tabular-nums; }
+.plat-delta-up { color: var(--warn); }
+.plat-delta-down { color: var(--up); }
+.plat-delta-b { font-size: 24rpx; font-weight: 400; color: var(--ink3); margin-left: 4rpx; }
+/* 上游刷新时间：要看得见，但不抢主数字的注意力 */
+.plat-time { font-size: 24rpx; color: var(--ink3); margin-top: 4rpx; }
+
+/* ---------- 玩家查询 ---------- */
+.lookup { display: flex; align-items: center; margin-top: 4rpx; }
+.inp {
+  flex: 1;
+  background: var(--sunken);
+  border: 1rpx solid var(--line);
+  border-radius: 14rpx;
+  color: var(--ink);
+  padding: 20rpx;
+  font-size: 26rpx;
+}
+/* input 的 placeholder 文字颜色由 placeholder-class 指定，不写就偏黑看不清 */
+.ph { color: var(--ink3); }
+.picker {
+  background: var(--sunken);
+  border: 1rpx solid var(--line);
+  border-radius: 14rpx;
+  padding: 20rpx;
+  margin-left: 16rpx;
+  font-size: 26rpx;
+  white-space: nowrap;
+}
+.btn {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 14rpx;
+  padding: 20rpx 32rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  margin-left: 16rpx;
+  text-align: center;
+}
+.btn-plain {
+  background: var(--raised);
+  border: 1rpx solid var(--line);
+  color: var(--ink);
+  font-weight: 400;
+}
+.btn-disabled { opacity: 0.5; }
+
+.pres { margin-top: 20rpx; background: var(--raised); border: 1rpx solid var(--line); border-radius: 16rpx; padding: 24rpx; }
+.pres-name { font-size: 34rpx; font-weight: 800; }
+.pres-meta { font-size: 26rpx; color: var(--ink2); margin-top: 4rpx; }
+/* uid 行：游戏内 ID 不唯一，这是唯一能确认"就是这个人"的东西，可点复制 */
+.pres-uid { font-size: 24rpx; color: var(--ink3); margin-top: 4rpx; }
+
+/* 战绩页：名字左边、在线状态右边 */
+.rtop { display: flex; align-items: center; }
+.rtop > view:first-child { flex: 1; min-width: 0; }
+.pill {
+  flex: none;
+  font-size: 24rpx;
+  border-radius: 999rpx;
+  padding: 8rpx 20rpx;
+  border: 1rpx solid;
+  white-space: nowrap;
+}
+.pill-on { color: var(--up); background: rgba(61, 220, 132, 0.10); border-color: rgba(61, 220, 132, 0.35); }
+.pill-off { color: var(--ink3); background: var(--glass); border-color: var(--line); }
+.kv { display: flex; flex-wrap: wrap; justify-content: space-between; margin-top: 20rpx; }
+.kv-item {
+  width: 48.5%;
+  box-sizing: border-box;
+  background: var(--sunken);
+  border: 1rpx solid var(--line);
+  border-radius: 16rpx;
+  padding: 16rpx;
+  margin-bottom: 16rpx;
+}
+.kv-k { font-size: 24rpx; color: var(--ink3); }
+.kv-v { font-size: 30rpx; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2rpx; }
+.kv-v-na { font-size: 24rpx; color: var(--ink3); font-weight: 400; }
+.note { font-size: 24rpx; color: var(--ink3); margin-top: 12rpx; line-height: 1.75; letter-spacing: 0.5rpx; }
+
+/* ---------- 距猎杀线差额 ---------- */
+/* 这是整个战绩面板里最想让人一眼看到的数字，所以给它一条独立的高亮带。
+   默认（还差多少分）用琥珀色提醒，已上榜转绿，已过线转蓝。 */
+.gap {
+  margin-top: 16rpx;
+  padding: 20rpx;
+  border-radius: 14rpx;
+  background: rgba(255, 176, 32, 0.10);
+  border: 1rpx solid rgba(255, 176, 32, 0.35);
+}
+.gap-pred { background: rgba(61, 220, 132, 0.10); border-color: rgba(61, 220, 132, 0.35); }
+.gap-above { background: rgba(88, 166, 255, 0.10); border-color: rgba(88, 166, 255, 0.35); }
+.gap-row { display: flex; align-items: baseline; }
+.gap-k { font-size: 26rpx; color: var(--ink2); margin-right: auto; }
+.gap-v { font-size: 40rpx; font-weight: 800; font-variant-numeric: tabular-nums; }
+.gap-u { font-size: 26rpx; font-weight: 700; color: var(--ink2); margin-left: 4rpx; }
+.gap-note { font-size: 24rpx; color: var(--ink3); margin-top: 8rpx; }
+
+.inline-err { color: var(--down); font-size: 26rpx; }
+.skeleton { color: var(--ink3); font-size: 26rpx; padding: 12rpx 0; }
+
+/* ---------- 战队专区 ---------- */
+.team {
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: 16rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
+}
+.team-name {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 12rpx;
+}
+.team-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12rpx 0;
+  border-top: 1rpx solid var(--track);
+}
+.tp-left { display: flex; align-items: center; min-width: 0; flex: 1; }
+.tp-ign { font-size: 26rpx; font-weight: 700; color: var(--ink); }
+.tp-tag {
+  margin-left: 12rpx;
+  font-size: 24rpx;
+  color: var(--ink2);
+  border: 1rpx solid var(--line);
+  border-radius: 6rpx;
+  padding: 2rpx 8rpx;
+  flex: none;
+}
+.tp-nation { margin-left: 8rpx; font-size: 24rpx; color: var(--ink3); flex: none; }
+.tp-right { display: flex; align-items: baseline; flex: none; margin-left: 16rpx; }
+.tp-rp { font-size: 28rpx; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tp-rank { margin-left: 8rpx; font-size: 24rpx; color: var(--ink2); }
+
+/* ---------- 英雄选取率 ---------- */
+.tabs { display: flex; flex-wrap: wrap; margin-bottom: 16rpx; }
+.tab {
+  font-size: 24rpx;
+  color: var(--ink2);
+  background: var(--raised);
+  border: 1rpx solid var(--line);
+  border-radius: 999rpx;
+  padding: 8rpx 20rpx;
+  margin: 0 12rpx 12rpx 0;
+}
+.tab-on { color: #ffffff; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.picks {
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: 16rpx;
+  padding: 8rpx 20rpx;
+}
+.pick {
+  display: flex;
+  align-items: baseline;
+  padding: 12rpx 0;
+  border-top: 1rpx solid var(--track);
+}
+.pick-idx {
+  font-size: 24rpx;
+  color: var(--ink3);
+  width: 40rpx;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.pick-name { font-size: 28rpx; color: var(--ink); flex: 1; min-width: 0; }
+.pick-rate {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.pick-chg { margin-left: 16rpx; font-size: 24rpx; width: 120rpx; text-align: right; flex: none; }
+.pick-up { color: var(--up); }
+.pick-down { color: var(--down); }
+
+/* ---------- 职业热门组合 ---------- */
+.comps {
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: 16rpx;
+  padding: 8rpx 20rpx;
+}
+.comp {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 0;
+  border-top: 1rpx solid var(--track);
+}
+.comp-idx {
+  font-size: 24rpx;
+  color: var(--ink3);
+  width: 40rpx;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.comp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.comp-name { font-size: 28rpx; color: var(--ink); }
+.comp-sub { margin-top: 4rpx; font-size: 24rpx; color: var(--ink2); }
+.comp-rate {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+  margin-left: 16rpx;
+}
+
+/* ---------- 页脚 ---------- */
+/* 广告位：放在页脚上方、内容之后，不遮挡任何操作 */
+.adbox { margin: 32rpx 0 8rpx; }
+
+.foot {
+  margin-top: 32rpx;
+  padding-top: 24rpx;
+  border-top: 1rpx solid var(--line);
+  font-size: 24rpx;
+  color: var(--ink3);
+  line-height: 1.75;
+  letter-spacing: 0.5rpx;
+}
+
+/* ---------- 排位专区（2026-10 重做：三层层次 + 英雄头像） ----------
+   参考国外数据站的做法，核心是【层次】而不是删内容：
+     头条卡（最常玩 / 最常搭配 / 样本） -> 前五图标卡 -> 其余压缩成一行一个。
+   原版 24 行全是同一字号字重的细条，眼睛没有入口 —— 那才是"丑"的真正原因。
+   颜色只做辅助：百分比和名次都是文字，不靠颜色表意（无障碍要求）。 */
+/* 选手/赛事切换 chip（用户 2026-10 三次反馈后的定稿）。
+   前两版的问题：
+     ① 初版是 border-radius:999rpx 的胶囊 + 27rpx 越档字号（"几个圈圈太丑了"）；
+     ② 第二版为了"做小"缩到 57rpx，但**上下留白是靠 line-height 猜的**，
+        字形盒与行盒不等高，看起来字偏下、上下边距不对称（"框过于小了，
+        边缘到字上下两端应该距离相等"）。
+   定稿做法 —— 不猜，直接给几何约束：
+     · 定高 72rpx + inline-flex + align-items:center：上下留白由居中**算出来**，必然对称；
+     · line-height:1 让行盒等于字形盒，消除字体默认行距带来的偏移；
+     · 左右 padding 24rpx 走 4rpx 网格；font-size 26rpx 在 7 档字号内；
+     · 热区仍用透明伪元素补到 84rpx，满足微信 80rpx 下限（视觉高度不跟着涨）；
+     · 选中态 = 实心 --accent + 白字 + 加粗（同 .langsw-on），
+       填色与字重两个信号，不只靠颜色。 */
+/* ⚠️ scroll-view（横向）**必须显式给高度**：微信不会按内容撑高，
+   不给就按默认高度裁切 —— 表现为「下面那排 chip 被卡片盖住一半」。
+   高度 = chip 72rpx + 透明热区上下各 6rpx = 84rpx，给 88rpx 留余量。
+   tests/static.test.mjs 有一条用例盯着这件事（预览工具看不见这个 bug）。 */
+.prochips { display: flex; white-space: nowrap; padding: 4rpx 0 12rpx; height: 88rpx; }
+.prochip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 72rpx;
+  padding: 0 24rpx;
+  margin-right: 8rpx;
+  border-radius: 4rpx;
+  background: var(--raised);
+  border: 1rpx solid var(--line);
+  font-size: 26rpx;
+  line-height: 1;
+  color: var(--ink2);
+}
+/* 透明热区：上下各补 6rpx，可点高度 84rpx；外观不变 */
+.prochip::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -6rpx;
+  bottom: -6rpx;
+}
+.prochip-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* 头条层 */
+.hcards { display: flex; gap: 14rpx; margin: 4rpx 0 14rpx; }
+.hcard {
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: 20rpx;
+  padding: 18rpx 20rpx;
+  box-sizing: border-box;
+}
+.hcard-hero { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: space-between; }
+.hcard-col { flex: 1 1 auto; display: flex; flex-direction: column; gap: 14rpx; }
+.hcard-half { padding: 14rpx 18rpx; }
+.hcard-k { font-size: 24rpx; color: var(--ink3); display: block; }
+.hcard-row { display: flex; align-items: center; margin: 10rpx 0; }
+.hcard-ic { width: 96rpx; height: 96rpx; border-radius: 16rpx; flex: 0 0 auto; }
+.hcard-txt { margin-left: 16rpx; }
+.hcard-v { font-size: 34rpx; font-weight: 700; color: var(--ink); display: block; line-height: 1.2; }
+.hcard-s { font-size: 24rpx; color: var(--ink3); display: block; }
+.hcard-big { font-size: 46rpx; font-weight: 800; color: var(--accent-ink); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.hcard-v2 { font-size: 28rpx; font-weight: 700; color: var(--ink); display: block; margin-top: 6rpx; line-height: 1.25; }
+.hcard-p2 { font-size: 28rpx; font-weight: 700; color: var(--up); font-variant-numeric: tabular-nums; }
+.hcard-u { font-size: 24rpx; font-weight: 400; color: var(--ink3); margin-left: 4rpx; }
+
+.prosrc { font-size: 24rpx; color: var(--ink3); margin: 2rpx 0 6rpx; }
+.pro-note { font-size: 24rpx; color: var(--warn-ink); margin-bottom: 6rpx; }
+
+/* 区块标题 */
+.pblock { margin-top: 26rpx; }
+.pblock-h { display: flex; align-items: baseline; margin-bottom: 12rpx; }
+.pblock-t { font-size: 28rpx; font-weight: 700; color: var(--ink); }
+.pblock-n { font-size: 24rpx; color: var(--ink3); margin-left: 12rpx; }
+.pblock-sub { font-size: 24rpx; color: var(--ink3); margin: 12rpx 0 6rpx; }
+/* 可点的"展开看 / 收起"：给它正常的热区高度，并按可点元素给足对比度
+   （--ink3 是页脚级弱文字，用在可点控件上太弱，所以这里换成 --ink2）。
+   按下反馈走 hover-class，不用 :active（小程序里不可靠）。 */
+.pmore { font-size: 26rpx; color: var(--ink2); padding: 18rpx 0; margin: 0; }
+.pmore-on { opacity: 0.55; }
+
+/* 英雄选取：第一名是"主推"，头像明显大一档；其余按名次成列。
+   2026-10-18 用户反馈"头像太大了"：从 88/128rpx 收到 **64/96rpx**
+   （第一名仍是其余的一倍半，层级还在，但不再占掉半行）。
+   方形原图满铺、圆角裁切；层级只靠**尺度落差**，不靠加框加底色。 */
+.hpick { display: flex; align-items: center; padding: 10rpx 0; }
+.hpick-pic {
+  flex: 0 0 auto;
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 8rpx;
+  overflow: hidden;
+  background: var(--track);
+}
+.hpick-ic { display: block; width: 100%; height: 100%; }
+.hpick-body { flex: 1; min-width: 0; margin-left: 16rpx; }
+.hpick-line { display: flex; align-items: baseline; }
+.hpick-rank { flex: 0 0 auto; min-width: 32rpx; font-size: 24rpx; color: var(--ink3); }
+.hpick-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* 数字用等宽数位：一列百分比的小数点能对齐（细节，但一眼看得出做过） */
+.hpick-pct {
+  flex: 0 0 auto;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--accent-ink);
+  font-variant-numeric: tabular-nums;
+}
+.hpick-bar { height: 8rpx; border-radius: 4rpx; background: var(--track); margin-top: 8rpx; }
+.hpick-fill { height: 8rpx; border-radius: 4rpx; background: var(--accent); }
+
+/* 第一名：整行略高、头像 96rpx、名字与百分比升到 34rpx 档 */
+.hpick-top { padding: 12rpx 0 16rpx; }
+.hpick-top .hpick-pic { width: 96rpx; height: 96rpx; border-radius: 10rpx; }
+.hpick-top .hpick-body { margin-left: 16rpx; }
+.hpick-top .hpick-name { font-size: 34rpx; }
+.hpick-top .hpick-pct { font-size: 34rpx; }
+.hpick-top .hpick-bar { height: 10rpx; margin-top: 12rpx; }
+.hpick-top .hpick-fill { height: 10rpx; }
+
+/* 前五图标卡：横向五格，头像为主视觉 */
+.hgrid { display: flex; gap: 10rpx; padding: 8rpx 0 0 4rpx; }
+.hcell {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: 16rpx;
+  padding: 12rpx 8rpx 10rpx;
+  text-align: center;
+}
+.hcell-pic { position: relative; width: 84rpx; height: 84rpx; margin: 0 auto 8rpx; }
+.hcell-ic { width: 84rpx; height: 84rpx; border-radius: 12rpx; }
+.hcell-rank {
+  position: absolute; left: -6rpx; top: -6rpx;
+  min-width: 30rpx; text-align: center;
+  font-size: 24rpx; font-weight: 700;
+  color: var(--bg); background: var(--ink2);
+  border-radius: 8rpx; padding: 0 6rpx; line-height: 1.5;
+}
+.hcell-name {
+  font-size: 24rpx; color: var(--ink); display: block;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.hcell-bar { height: 8rpx; background: var(--track); border-radius: 999rpx; margin: 6rpx 0 4rpx; overflow: hidden; }
+.hcell-fill { height: 100%; background: var(--accent); border-radius: 999rpx; }
+.hcell-pct { font-size: 24rpx; font-weight: 700; color: var(--ink2); font-variant-numeric: tabular-nums; }
+
+/* 紧凑行：名次 + 头像 + 名字 + 条 + 百分比 */
+.lrow { display: flex; align-items: center; padding: 7rpx 0; }
+.lrow-rank {
+  width: 46rpx; flex: 0 0 auto; text-align: center;   /* 46rpx：两位数名次（11、12）也放得下，不然会贴到枪名上 */
+  font-size: 24rpx; color: var(--ink3); font-variant-numeric: tabular-nums;
+}
+.lrow-ic { width: 44rpx; height: 44rpx; border-radius: 8rpx; flex: 0 0 auto; margin-right: 10rpx; }
+.lrow-name {
+  width: 210rpx; flex: 0 0 auto;
+  font-size: 24rpx; color: var(--ink);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.lrow-sub {
+  display: inline-block; max-width: 150rpx; vertical-align: bottom;
+  font-size: 24rpx; color: var(--ink3); margin-left: 8rpx;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.lrow-bar { flex: 1 1 auto; height: 12rpx; background: var(--track); border-radius: 999rpx; margin: 0 14rpx; overflow: hidden; }
+.lrow-fill { height: 100%; background: var(--accent); border-radius: 999rpx; }
+.lrow-fill-w { background: var(--info-ink); }
+.lrow-fill-p { background: var(--warn); }
+.lrow-pct { width: 110rpx; flex: 0 0 auto; text-align: right; font-size: 24rpx; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* 三人组合：三个头像并排 + 名字一行（原版名字串会折行，最难看的就这块） */
+.crow {
+  display: flex; align-items: center;
+  background: var(--card); border: 1rpx solid var(--line);
+  border-radius: 16rpx; padding: 14rpx 16rpx; margin-bottom: 10rpx;
+}
+.crow-avs { display: flex; flex: 0 0 auto; }
+.crow-av { width: 56rpx; height: 56rpx; border-radius: 10rpx; border: 2rpx solid var(--card); }
+.crow-av + .crow-av { margin-left: -14rpx; }
+.crow-txt { flex: 1 1 auto; min-width: 0; margin: 0 14rpx; }
+.crow-name {
+  font-size: 24rpx; color: var(--ink); display: block;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.crow-bar { height: 8rpx; background: var(--track); border-radius: 999rpx; margin-top: 8rpx; overflow: hidden; }
+.crow-fill { height: 100%; background: var(--up); border-radius: 999rpx; }
+.crow-v { flex: 0 0 auto; text-align: right; }
+.crow-pct { font-size: 26rpx; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; display: block; }
+.crow-n { font-size: 24rpx; color: var(--ink3); display: block; }
+
+/* 排位专区下面那个广告位：上面已经有分数线那一块，这里少留点间距 */
+.adbox-2 { margin-top: 24rpx; }
+
+/* ---------- 图鉴（英雄 / 枪械 + 职业使用率）已在 2026-10-18 删除 ----------
+   用户要求去掉「版本图鉴」和枪械样本：它和上面的「职业选手数据」回答的是同一件事
+   （谁被用得多），一页里出现两遍。.grid / .cell / .codex-n 那套规则随之删除。 */
+
+/* ===== 跨页共用：职业统计区块的骨架（predator 与 matches 都用）=====
+   第 17 轮拆页面时 WXML 搬了家、CSS 没跟着走，比赛页的 ALGS 因此整块没样式。
+   凡是两个页面都用到的规则，一律放这里，别放页面级 wxss。 */

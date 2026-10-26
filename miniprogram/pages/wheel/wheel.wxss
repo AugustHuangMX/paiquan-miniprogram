@@ -1,0 +1,245 @@
+/* 英雄 / 武器轮盘。
+   数值全部走 app.wxss 的令牌层：字号 7 档 / --sp-* 间距 / --r-* 圆角 / 颜色只用 var()。
+
+   一屏预算（iPhone 12/13，子页没有 tabBar，可用约 1448rpx）：
+     页面边距 32 + 轮盘开关 84 + 8 + 玩法开关 72 + 16 + 转盘 600 + 池子 50
+     + 结果 250 + 规则 54 + 底部 16 ≈ 1182，导航栏之外还有余量。
+
+   三条实现上的硬约束：
+     1. **扇形只能用 clip-path + 百分比**：rpx 会被编译期替换改坏（见 docs/design/README.md），
+        角度全部由 utils/wheel_data.js 算好，这里不参与计算。
+     2. **转盘动画只写一条 transition**，时长必须和 wheel.js 的 SPIN_MS 一致 ——
+        对不上就会"已经出结果了但还在转"或"转完了迟迟不出结果"。
+     3. **盘面文字是径向的**：一片的弧长只有五十来 rpx，横排会压到隔壁。 */
+
+.wrap { padding-bottom: var(--sp-4); }
+
+/* ---------- 轮盘开关（英雄 / 武器） ---------- */
+.wtabs { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-2); }
+.wtab {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80rpx;              /* 正好等于 80rpx 的热区下限 */
+  border-radius: var(--r-md);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--ink2);
+  line-height: 1;
+}
+/* 选中态 = 实心强调色 + 白字 + 加粗（填色和字重两个信号，不只靠颜色） */
+.wtab-on { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+
+/* ---------- 玩法 ----------
+   比轮盘开关小一档：它隶属于当前轮盘，视觉上不该和"换轮盘"抢。
+   72rpx 视觉高度 + 上下各 4rpx 透明热区 = 80rpx，刚好够微信的下限。 */
+.wmodes { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+.wmode {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72rpx;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--raised);
+  border: 1rpx solid var(--line);
+  font-size: var(--fs-min);
+  color: var(--ink2);
+  line-height: 1;
+  text-align: center;
+}
+.wmode::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4rpx;
+  bottom: -4rpx;
+}
+.wmode-on {
+  background: var(--card);
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
+  font-weight: var(--fw-bold);
+}
+
+/* ---------- 转盘 ---------- */
+.wwheel {
+  position: relative;
+  width: 600rpx;
+  height: 600rpx;
+  margin: 0 auto;
+}
+
+/* 盘面：整块按 rot 旋转，transition 负责动画。 */
+.wdisc {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-full);
+  overflow: hidden;
+  background: var(--sunken);
+  transform-origin: 50% 50%;
+  /* 时长必须和 wheel.js 的 SPIN_MS 一样 */
+  transition: transform 2600ms cubic-bezier(0.12, 0.72, 0.06, 1);
+}
+
+/* 扇形。颜色只用两级面 + 强调色：
+   相邻两片必须能分出来 —— 深色下 card/raised 差一档，浅色下是白/浅灰。 */
+.wseg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.wseg-a { background: var(--card); }
+.wseg-b { background: var(--raised); }
+.wseg-on { background: var(--accent); }
+
+/* 盘面上的字：位置与旋转全在 inline style 里（utils/wheel_data.js 算的）。
+   white-space: nowrap 是必需的 —— 名字一折行，径向排版就对不齐了。 */
+.wspot {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+.wspot-t {
+  font-size: var(--fs-min);
+  color: var(--ink);
+  line-height: 1;
+  letter-spacing: 0.5rpx;
+}
+.wspot-on .wspot-t { color: #ffffff; font-weight: var(--fw-bold); }
+
+/* 外圈：压住扇形的毛边，也让转盘有个"边框"的边界 */
+.wrim {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-radius: var(--r-full);
+  border: 6rpx solid var(--line);
+  z-index: 2;
+}
+
+/* 指针：钉在正上方、尖朝下。三角用 border 画（不用图片，也不用 drop-shadow —— 官方明确不支持） */
+.wptr {
+  position: absolute;
+  left: 50%;
+  top: -10rpx;
+  margin-left: -20rpx;
+  width: 0;
+  height: 0;
+  border-left: 20rpx solid transparent;
+  border-right: 20rpx solid transparent;
+  border-top: 32rpx solid var(--accent-ink);
+  z-index: 3;
+}
+
+/* 中间的抽取按钮。直径 184rpx，热区远大于 80rpx 下限；拇指够得到、也不挡盘面文字。 */
+.whub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 184rpx;
+  height: 184rpx;
+  margin: -92rpx 0 0 -92rpx;
+  box-sizing: border-box;
+  border-radius: var(--r-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--sp-3);
+  background: var(--card);
+  border: 6rpx solid var(--accent);
+  box-shadow: 0 6rpx 28rpx rgba(0, 0, 0, 0.35);
+  z-index: 4;
+}
+.whub-t {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+  line-height: 1.3;
+  text-align: center;
+}
+/* 转动中：变淡 + 文案换成「转动中…」，让"点了没反应"这件事不可能发生 */
+.whub-off { opacity: 0.65; }
+
+/* 池子规模：一行小字，放在转盘下面（不塞进中间的按钮里，按钮只放一个动作） */
+.wpool {
+  margin-top: var(--sp-3);
+  text-align: center;
+  font-size: var(--fs-min);
+  color: var(--ink3);
+  line-height: 1.5;
+}
+
+/* ---------- 结果 ---------- */
+.wres { margin-top: var(--sp-4); }
+.wres-h {
+  font-size: var(--fs-section);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+  line-height: 1.4;
+  margin-bottom: var(--sp-2);
+}
+.wcards { display: flex; gap: var(--sp-2); }
+.wcard {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+}
+/* 两位以上：卡片变竖排（头像在上、名字在下），并排也放得下 */
+.wcards-col .wcard { flex-direction: column; align-items: flex-start; gap: var(--sp-2); }
+.wcard-img {
+  flex: 0 0 auto;
+  width: 108rpx;
+  height: 108rpx;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+}
+.wcards-col .wcard-img { width: 80rpx; height: 80rpx; }
+.wcard-txt { min-width: 0; }
+.wcard-tag {
+  display: block;
+  font-size: var(--fs-min);
+  color: var(--ink3);
+  line-height: 1.5;
+}
+.wcard-n {
+  display: block;
+  font-size: var(--fs-head);
+  font-weight: var(--fw-bold);
+  color: var(--ink);
+  line-height: 1.3;
+}
+/* 并排卡：名字降到 --fs-sub，否则中文全名（"复仇女神连发突击步枪"）会折成两行把卡撑高 */
+.wcards-col .wcard-n { font-size: var(--fs-sub); }
+.wres-n {
+  display: block;
+  margin-top: var(--sp-2);
+  font-size: var(--fs-min);
+  color: var(--ink2);
+  line-height: 1.6;
+}
+
+/* ---------- 规则 ---------- */
+.wnote {
+  margin-top: var(--sp-4);
+  font-size: var(--fs-min);
+  color: var(--ink3);
+  line-height: 1.75;
+  letter-spacing: 0.5rpx;
+}

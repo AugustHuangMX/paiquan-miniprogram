@@ -1,0 +1,135 @@
+<!--
+  猜圈练习。玩法与交互说明见 ringguessr.js 顶部。
+
+  ★ 选点交互是手机地图选点的通行做法：
+     准星钉在正中 → 点地图聚焦（自动放大）→ 单指拖动地图 → 双指捏合缩放 → 底部大按钮确认。
+
+  版面（一屏，拇指够得到底部按钮）：
+     计分条 → 时间进度条 → 地图（准星居中）→ 底部操作区（大按钮）
+  ⚠️ wx:for 和 wx:if 不写在同一个标签上；也不用 wx:else（预览器会两个分支都渲染）。
+-->
+<view class="wrap{{pc ? ' wrap-pc' : ''}} theme-{{theme}}" data-lang="{{lang}}">
+
+  <view wx:if="{{noData}}" class="note">{{T.rgNoData}}</view>
+
+  <block wx:else>
+    <!-- 计分条 -->
+    <view class="rbar">
+      <view class="rbar-i">
+        <text class="rbar-k">{{T.rgScore}}</text>
+        <text class="rbar-v">{{score}}</text>
+      </view>
+      <view class="rbar-i">
+        <text class="rbar-k">{{T.rgBest}}</text>
+        <text class="rbar-v">{{best}}</text>
+      </view>
+      <view class="rbar-i rbar-i-wide">
+        <text class="rbar-k">{{roundText}}</text>
+        <text class="rbar-m">{{mapName}}</text>
+      </view>
+    </view>
+
+    <!-- 一局 20 秒：进度条比"剩余 12s"这种小字更好读，也不占额外高度 -->
+    <view class="rtimer">
+      <view class="rtimer-fill" style="width:{{leftPct}}%"></view>
+    </view>
+
+    <!-- 地图视口：准星固定在正中，动的是地图 -->
+    <view class="rmap" id="rgmap"
+          catchtouchstart="onTouchStart" catchtouchmove="onTouchMove" catchtouchend="onTouchEnd">
+      <view class="rworld {{worldAnim ? 'rworld-anim' : ''}}" style="{{worldStyle}}">
+        <image class="rworld-img" src="{{image}}" mode="aspectFill"></image>
+
+        <!-- 安全区圈：0s 第 1 个、5s 第 2 个、10s 第 3 个。白圈 + 深色描边，任何地形都看得清 -->
+        <block wx:for="{{hints}}" wx:key="key">
+          <view wx:if="{{index < visible}}" class="rcircle" style="{{item.style}}"></view>
+        </block>
+
+        <!-- 可选提示：最终圈可能落点 -->
+        <block wx:if="{{showEnds}}">
+          <view wx:for="{{ends}}" wx:key="key" class="rend" style="{{item.style}}"></view>
+        </block>
+
+        <!-- 揭晓：答案圈 + 真实圈心 + 你选的点 -->
+        <block wx:if="{{result}}">
+          <view class="ranswer" style="{{result.answer.style}}"></view>
+          <view wx:if="{{result.centerDot}}" class="rdot rdot-true" style="{{result.centerDot.style}}"></view>
+          <view wx:if="{{result.guessDot}}" class="rdot rdot-guess" style="{{result.guessDot.style}}"></view>
+        </block>
+      </view>
+
+      <!-- 选点标记：**就一个红点**，点心 = 屏幕正中 = 你选的位置。
+           不做图钉/准星了：图钉那个尖在手机上其实看不出压在哪，还挡地图；
+           一个带白圈的红点，边界清楚、不挡东西。 -->
+      <view wx:if="{{phase === 'guess'}}" class="rmark"></view>
+
+      <view wx:if="{{phase === 'guess' && !tutStep}}" class="rhint">
+        <text class="rhint-t">{{T.rgAsk}}</text>
+        <!-- 已出现几个圈 / 本题一共给几个：写出来才不会让人以为"第 3 个圈不来了"是 bug
+             （题库里有 2 提示圈的题 —— 上游接口只给 3 个圈，只能拿前 2 个当提示）。 -->
+        <text class="rhint-n">{{visible}}/{{hintTotal}}</text>
+        <text class="rhint-s">{{T.rgLeft}} {{leftSec}}s</text>
+      </view>
+
+      <!-- 缩小（回到看全图）——只有放大过才出现 -->
+      <view wx:if="{{canZoomOut && phase === 'guess'}}" class="rzoombar" catchtap="onZoomOut">
+        <text class="rzoom-t">{{zoomText}}</text>
+        <text class="rzoom-b">{{T.rgZoomOut}}</text>
+      </view>
+    </view>
+
+    <!-- 底部操作区：大按钮 + 拇指可达（不要做成小药丸） -->
+    <view class="rfoot">
+      <block wx:if="{{phase === 'guess' && !confirming}}">
+        <view class="rbig" bindtap="onConfirm">{{T.rgConfirm}}</view>
+      </block>
+      <block wx:if="{{confirming}}">
+        <view class="rbig-ask">{{T.rgConfirmAsk}}</view>
+        <view class="rbig-row">
+          <view class="rbig rbig-2" bindtap="onCancelConfirm">{{T.rgAdjust}}</view>
+          <view class="rbig rbig-2 rbig-on" bindtap="onSubmit">{{T.rgOk}}</view>
+        </view>
+      </block>
+      <view wx:if="{{phase === 'result' && !done}}" class="rbig rbig-on" bindtap="onNext">{{T.rgNext}}</view>
+      <view wx:if="{{done}}" class="rbig rbig-on" bindtap="onAgain">{{T.rgAgain}}</view>
+      <view wx:if="{{phase === 'guess'}}" class="rmini" bindtap="onToggleEnds">{{T.rgShowEnds}}</view>
+    </view>
+
+    <!-- 判定结果 -->
+    <view wx:if="{{result}}" class="rres rres-{{result.hit ? 'in' : 'out'}}">
+      <text class="rres-t">{{result.title}}</text>
+      <text class="rres-d">{{errText}}</text>
+      <text class="rres-s">{{roundScoreText}}</text>
+      <!-- 得分明细：和分数分开排，计算式单独一行，不跟分数挤在一起 -->
+      <view wx:if="{{bdAcc}}" class="rres-bd">
+        <text class="rres-bd-i">{{bdAcc}}</text>
+        <text class="rres-bd-i">{{bdTime}}</text>
+        <text class="rres-bd-f">{{bdFormula}}</text>
+        <text class="rres-bd-h">{{bdHint}}</text>
+      </view>
+    </view>
+
+    <!-- 广告位：**只在本局结束时出现**。
+         猜圈是单屏小游戏，玩的时候任何位置塞广告都会挡地图或贴着操作按钮
+         （微信明令禁止广告压内容、贴按钮）；「一局结束 → 再来一局」才是这一页
+         唯一天然的分段缝。未配置 unit-id 时组件不渲染（见 utils/ad.js）。 -->
+    <view wx:if="{{done}}" class="adbox">
+      <ad wx:if="{{adUnit}}" unit-id="{{adUnit}}" ad-intervals="60" binderror="onAdError"></ad>
+    </view>
+
+    <view class="note">{{T.rgRulesShort}}</view>
+    <view class="note">{{bankText}}</view>
+  </block>
+
+  <!-- 新手示范：贴底卡片（不遮地图，示范期间地图照常可以点、可以拖） -->
+  <view wx:if="{{tutStep}}" class="rtut">
+    <view class="rtut-card">
+      <text class="rtut-n">{{T.rgTutTitle}}</text>
+      <text class="rtut-t">{{tutText}}</text>
+      <view class="rtut-act">
+        <view class="rbig rbig-2" bindtap="onTutSkip">{{T.rgTutSkip}}</view>
+        <view class="rbig rbig-2 rbig-on" bindtap="onTutNext">{{tutStep >= 3 ? T.rgTutDone : T.rgTutNext}}</view>
+      </view>
+    </view>
+  </view>
+</view>

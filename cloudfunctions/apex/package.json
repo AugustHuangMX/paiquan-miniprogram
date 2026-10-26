@@ -1,0 +1,9 @@
+{
+  "name": "apex",
+  "version": "1.1.0",
+  "description": "中转 Apex Legends Status 接口的云函数；wx-server-sdk 只用于存猎杀底分的每小时快照",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.7.2"
+  }
+}

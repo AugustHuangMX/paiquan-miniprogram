@@ -1,0 +1,264 @@
+/* 猜圈练习。
+   数值全部走 app.wxss 的令牌层（字号 7 档 / --sp-* 间距 / --r-* 圆角 / 颜色只用 var()）。
+
+   手机适配的三条硬规矩（这一版按它们重排过）：
+     1. **一屏装得下**：计分条 + 进度条 + 地图 + 底部按钮，其余文字最多两行短句。
+     2. **主操作在底部、够大**：主按钮高 96rpx（远高于 80rpx 的最小热区），拇指自然落点。
+        小按钮只留给"提示开关"这种次要操作。
+     3. **手势只用通行的那几个**：单指拖动 = 平移、双指捏合 = 缩放、点一下 = 聚焦。
+        不发明"按住小方框拖"这种没人见过的操作。 */
+
+/* 页面是**单屏**的（json 里 disableScroll），所以只留一点点底部余量；
+   留太多反而把内容顶出屏幕、还被裁掉。 */
+.wrap { padding-bottom: var(--sp-4); }
+
+.rbar { display: flex; align-items: flex-end; margin: var(--sp-2) 0 var(--sp-2); }
+.rbar-i { margin-right: var(--sp-6); }
+.rbar-i-wide { margin-right: 0; margin-left: auto; text-align: right; }
+.rbar-k { display: block; font-size: var(--fs-min); color: var(--ink3); line-height: 1.5; }
+.rbar-v { display: block; font-size: var(--fs-head); font-weight: var(--fw-num); color: var(--ink); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.rbar-m { display: block; font-size: var(--fs-sub); font-weight: var(--fw-bold); color: var(--ink2); line-height: 1.4; }
+
+/* 倒计时进度条：比"剩余 12s"的小字更好读，也不额外占地 */
+.rtimer {
+  height: 6rpx;
+  border-radius: var(--r-full);
+  background: var(--track);
+  overflow: hidden;
+  margin-bottom: var(--sp-2);
+}
+.rtimer-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--accent-ink);
+  transition: width 200ms linear;
+}
+
+/* ---------- 地图视口 ---------- */
+.rmap {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-top: 100%;          /* 正方形容器 */
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: var(--sunken);
+}
+/* 里面这层是"世界"：会被 translate + scale，圈和点都按百分比挂在这层上，
+   所以缩放时圈会跟着放大（这是对的：它本来就是地图的一部分）。 */
+.rworld {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+/* 程序改动（点击聚焦 / 缩小）才加过渡；手指拖动时不能有，否则跟手会飘 */
+.rworld-anim { transition: transform 180ms ease-out; }
+.rworld-img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+
+/* 安全区圈：**白色粗圈**（用户要求"明显的白色圈"）。
+   白色是规范里唯一允许写死的色值；外圈再套半透明黑，浅色地形上也能看清。 */
+.rcircle {
+  position: absolute;
+  box-sizing: border-box;
+  border: 6rpx solid #ffffff;
+  border-radius: var(--r-full);
+  box-shadow: 0 0 0 2rpx rgba(0, 0, 0, 0.55), inset 0 0 0 2rpx rgba(0, 0, 0, 0.35);
+}
+/* 最终圈可能落点 */
+.rend {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2rpx solid var(--info-ink);
+  background: var(--glass);
+  border-radius: var(--r-full);
+}
+/* 真实答案圈 */
+.ranswer {
+  position: absolute;
+  box-sizing: border-box;
+  border: 3rpx solid var(--accent-ink);
+  border-radius: var(--r-full);
+}
+/* 揭晓后的两个点：真实圈心（实心绿）/ 你选的点（空心强调色）。
+   形状不同，不只靠颜色区分。必须给死宽高 + 负 margin，否则 0×0 看不见。 */
+.rdot {
+  position: absolute;
+  box-sizing: border-box;
+  width: 22rpx;
+  height: 22rpx;
+  margin: -11rpx 0 0 -11rpx;
+  border-radius: var(--r-full);
+}
+.rdot-true { background: var(--up); border: 2rpx solid var(--ink); }
+.rdot-guess { border: 4rpx solid var(--accent-ink); background: var(--card); }
+
+/* ---------- 选点标记：一个红点 ----------
+   为什么最后只剩一个点：
+     · 十字准星像靶心，图钉在手机上又看不出尖到底压在哪，而且两者都挡地图；
+     · 选中的位置本来就是**屏幕正中**，一个居中的点已经把它说清楚了。
+   三层让它在任何地形上都显眼：红心 → 白圈 → 深色细描边（雪地/沙漠上白圈会糊，
+   深色描边能把边界再拉回来）。点**正好居中**（负 margin 半个尺寸），
+   所以红心正中央就是那个坐标，不用猜。 */
+.rmark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  box-sizing: border-box;
+  width: 22rpx;                 /* 小一号：34rpx 时挡地图，用户提过 */
+  height: 22rpx;
+  margin: -11rpx 0 0 -11rpx;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  border: 3rpx solid #ffffff;
+  box-shadow: 0 0 0 1rpx rgba(0, 0, 0, 0.55), 0 1rpx 5rpx rgba(0, 0, 0, 0.45);
+}
+
+.rhint {
+  position: absolute;
+  left: var(--sp-3);
+  right: var(--sp-3);
+  bottom: var(--sp-3);
+  display: flex;
+  align-items: baseline;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  /* 用实底而不是半透明玻璃：地图上有雪地这种大面积亮色，半透明底上的小字读不清 */
+  background: var(--card);
+  border: 1rpx solid var(--line);
+}
+.rhint-t { flex: 1 1 auto; min-width: 0; color: var(--ink); font-size: var(--fs-min); line-height: 1.5; }
+.rhint-n { flex: 0 0 auto; margin-left: var(--sp-3); color: var(--ink3); font-size: var(--fs-min); font-variant-numeric: tabular-nums; }
+.rhint-s { flex: 0 0 auto; margin-left: var(--sp-3); color: var(--ink); font-size: var(--fs-min); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+
+/* 缩放指示 + 缩小按钮（只在放大过之后出现） */
+.rzoombar {
+  position: absolute;
+  right: var(--sp-3);
+  top: var(--sp-3);
+  display: flex;
+  align-items: baseline;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-full);
+  background: var(--glass);
+  border: 1rpx solid var(--line);
+}
+.rzoom-t { font-size: var(--fs-min); color: var(--ink); font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; }
+.rzoom-b { margin-left: var(--sp-2); font-size: var(--fs-min); color: var(--ink2); }
+
+/* ---------- 底部操作区 ---------- */
+.rfoot { margin-top: var(--sp-3); }
+/* 主按钮：全宽、96rpx 高 —— 拇指落点，远高于 80rpx 的最小热区 */
+.rbig {
+  height: 96rpx;
+  line-height: 96rpx;
+  text-align: center;
+  border-radius: var(--r-lg);
+  background: var(--raised);
+  border: 1rpx solid var(--line);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-bold);
+}
+.rbig-on { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+.rbig-ask { font-size: var(--fs-sub); color: var(--ink2); line-height: 1.5; margin-bottom: var(--sp-2); text-align: center; }
+.rbig-row { display: flex; gap: var(--sp-3); }
+.rbig-2 { flex: 1 1 0; }
+/* 次要操作：一行小字按钮，别和主按钮抢注意力 */
+.rmini {
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) 0;
+  text-align: center;
+  font-size: var(--fs-min);
+  color: var(--ink2);
+}
+
+/* ---------- 结果条 ---------- */
+.rres {
+  display: flex;
+  flex-direction: column;      /* 竖排：标题/误差/分数/明细各占一行，不再横着挤 */
+  align-items: flex-start;
+  gap: 6rpx;
+  margin-top: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+}
+.rres-in { border-color: var(--up); }
+.rres-out { border-color: var(--warn); }
+.rres-t { font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--ink); }
+.rres-d { font-size: var(--fs-min); color: var(--ink2); }
+.rres-s { font-size: var(--fs-head); font-weight: var(--fw-bold); color: var(--accent-ink); font-variant-numeric: tabular-nums; margin-top: 2rpx; }
+
+/* ---------- 新手示范 ----------
+   贴底卡片，**不用全屏遮罩**：遮罩会盖住地图、还会吃掉点击
+   （实机上表现就是"点了地图没反应"）。 */
+.rtut {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  padding: 0 var(--sp-4) var(--sp-4);
+}
+.rtut-card {
+  padding: var(--sp-4);
+  border-radius: var(--r-lg);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  box-shadow: 0 8rpx 40rpx rgba(0, 0, 0, 0.45);
+}
+.rtut-n { display: block; font-size: var(--fs-min); color: var(--ink3); line-height: 1.5; margin-bottom: var(--sp-2); }
+.rtut-t { display: block; font-size: var(--fs-body); color: var(--ink); line-height: 1.7; }
+.rtut-act { display: flex; gap: var(--sp-3); margin-top: var(--sp-4); }
+
+/* 得分明细：精度分 / 时间系数 / 口径说明 */
+
+
+
+
+
+/* 得分明细：独立一段（分数在上方单独一行，这里不跟分数挤着） */
+.rres-bd {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-2);
+  border-top: 1rpx solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  width: 100%;
+}
+.rres-bd-i {
+  font-size: var(--fs-min);
+  color: var(--ink2);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.rres-bd-f {
+  font-size: var(--fs-min);
+  color: var(--ink);
+  font-weight: var(--fw-bold);
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.rres-bd-h {
+  font-size: var(--fs-min);
+  color: var(--ink3);
+  line-height: 1.5;
+  margin-top: 2rpx;
+}
+
+
+/* ================= 电脑端适配 =================
+   微信 PC 端窗口很宽：rpx 按窗口宽度换算会把整页拉得很夸张，
+   这里把内容限宽居中（手机上 480px > 屏宽，等于不生效）。 */
+.wrap-pc {
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+/* 桌面上阴影/滤镜这类效果很吃性能，能省就省 */
+.wrap-pc .rmark { box-shadow: none; }
+.wrap-pc .rworld-anim { transition: none; }
