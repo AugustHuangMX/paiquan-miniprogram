@@ -40,7 +40,9 @@ node tests/page.test.mjs      # 七个页面的行为
 
 ## 不要做
 
-- **不要 `git init`**：这个仓库就是唯一基线。你若从 zip 拿过副本并 init 过，先删掉那份 `.git` 再 clone。
+- **不要 `git init`**：`apex-miniapp` 已有仓库（`main` 分支）。
+  你若只拿到 zip，请先 clone 仓库再把文件覆盖进去；已经 init 过的，删掉那份 `.git`（`rm -rf .git`）再 clone。
+  两个各自 init 的仓库没有共同祖先，将来合不了。
 - 不要提交 `project.private.config.json`（已在 `.gitignore`，是本机私有配置）。
 - 不要在共享代码里改 `appid` / `CLOUD_ENV` 来跑自己的环境；那是本机差异，见 `AI-CONTEXT.md` §15。
 - 不要把 `preview/`、`out_*.html`、`node_modules/` 提交进来（已 ignore，别强行 `-f`）。
