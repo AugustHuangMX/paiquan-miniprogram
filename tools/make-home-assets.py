@@ -2,24 +2,21 @@
 """生成首页（2026-10-27 改版）用到的两组位图：
 
   assets/tab-home.png / tab-home-on.png   「首页」tab 图标（81x81，和现有图标同一套颜色与实心风格）
-  assets/logo-mark.png                     首页导航栏左边的品牌标（红底白字「派」，128x128）
+  assets/logo-mark.png                     首页导航栏左边的派圈图标（128x128，从 tools/brand/paiquan-logo.png 裁出来）
 
-颜色：tab 图标未选中 #8f97a5、选中 #e0353a（从现有 tab 图标采的，同 make-games-tabicon.py）；
-品牌标的红用 app.wxss 的 --accent（#d92b2b，白字压上去 4.85:1）。
-字体：Noto Sans SC（SIL 开源字体许可，可以随图片分发），Windows 11 自带 C:\\Windows\\Fonts\\NotoSansSC-VF.ttf。
+颜色：tab 图标未选中 #8f97a5、选中 #e0353a（从现有 tab 图标采的，同 make-games-tabicon.py）。
 用法：python tools/make-home-assets.py（在仓库根目录跑）
 """
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 S = 4                 # 超采样倍数：直接画小图边缘会有锯齿，画 4 倍再 LANCZOS 缩下来
 GRAY = (143, 151, 165, 255)
 RED = (224, 53, 58, 255)
-ACCENT = (217, 43, 43, 255)
 CLEAR = (0, 0, 0, 0)
 ASSETS = Path(__file__).resolve().parent.parent / "miniprogram" / "assets"
-FONT = Path(r"C:\Windows\Fonts\NotoSansSC-VF.ttf")
+BRAND = Path(__file__).resolve().parent / "brand" / "paiquan-logo.png"   # 派圈的图标原图（2048x2048，2026-10-27 用户给的）
 
 
 def house(color):
@@ -39,24 +36,22 @@ def house(color):
 
 
 def logo():
-    """红底圆角方块 + 白字「派」"""
+    """派圈的图标 → 导航栏用的 128x128 圆角小图标。
+    原图的图形（白 T + 红 L）只占中间约四成，缩到 64rpx（32px）会看不清，所以先裁掉四周的空白（图形约占七成）"""
     size = 128
-    n = size * S
-    im = Image.new("RGBA", (n, n), CLEAR)
-    d = ImageDraw.Draw(im)
-    d.rounded_rectangle([0, 0, n - 1, n - 1], radius=28 * S, fill=ACCENT)
-    font = ImageFont.truetype(str(FONT), 84 * S)
-    font.set_variation_by_name("Bold")
-    box = d.textbbox((0, 0), "派", font=font)
-    x = (n - (box[2] - box[0])) / 2 - box[0]
-    y = (n - (box[3] - box[1])) / 2 - box[1]
-    d.text((x, y), "派", font=font, fill=(255, 255, 255, 255))
+    src = Image.open(BRAND).convert("RGB")
+    cx, cy, half = 1056, 1022, 590          # 图形的中心和裁切半径，量自原图
+    im = src.crop((cx - half, cy - half, cx + half, cy + half)).resize((size * S, size * S), Image.LANCZOS)
+    mask = Image.new("L", im.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, im.size[0] - 1, im.size[1] - 1], radius=28 * S, fill=255)
+    im = im.convert("RGBA")
+    im.putalpha(mask)
     return im.resize((size, size), Image.LANCZOS)
 
 
 if __name__ == "__main__":
     house(GRAY).save(ASSETS / "tab-home.png")
     house(RED).save(ASSETS / "tab-home-on.png")
-    # 只有红、白两色和边缘过渡：转成 64 色调色板图，9 KB → 约 2 KB（主包只剩几十 KB 余量）
+    # 只有黑底、白、红三色和边缘过渡：转成 64 色调色板图，省主包空间（主包上限 2 MB）
     logo().quantize(64, method=Image.Quantize.FASTOCTREE).save(ASSETS / "logo-mark.png", optimize=True)
     print("wrote tab-home.png / tab-home-on.png / logo-mark.png")

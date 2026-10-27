@@ -282,6 +282,13 @@ describe("广告位", () => {
     }
   });
 
+  test("首页的广告在「现在玩什么」和「大家在玩什么」中间（用户 2026-10-27 定的）", () => {
+    const wxml = read(pageWxmlPath("home"));
+    const adAt = wxml.indexOf("<ad");
+    assert.ok(wxml.indexOf('class="hsmalls"') < adAt, "广告应在现在玩什么的小卡之后");
+    assert.ok(adAt < wxml.indexOf("<evo-crowd"), "广告应在大家在玩什么之前");
+  });
+
   test("配了广告位就必须合法（填错会报错或留白；没配则允许）", () => {
     const ad = require(path.join(MP, "utils", "ad.js"));
     for (const name of AD_PAGES) {

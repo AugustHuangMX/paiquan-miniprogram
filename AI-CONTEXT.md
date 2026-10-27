@@ -568,6 +568,7 @@ git update-index --no-skip-worktree project.config.json miniprogram/app.js
 
 **为什么用分包**：主包 1.88 MB / 上限 2 MB。Evo 的东西放分包，主包只多了「我的」外壳、一个 tab 图标和词条（约 15 KB）。
 首页改版（2026-10-27）主包又多了约 37 KB（首页本身、`utils/home.js`、几个图标和词条）；首页上 Evo 的两块（`home`、`crowd` 组件）还是在分包里。
+上面的 MB 数是把文件大小直接加起来的；开发者工具打包（压缩、去掉 tests 等）后的才是微信算的：2026-10-27 预览时主包 1.5 MB、分包 evo 59 KB。
 
 **数据流**
 

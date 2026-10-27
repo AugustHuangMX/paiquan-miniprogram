@@ -4,7 +4,8 @@
 
 /* ---------- 导航栏：品牌标 + 名字 + 问候语 ---------- */
 .hnav { margin-bottom: var(--sp-4); }
-.hnav-logo { flex: none; width: 64rpx; height: 64rpx; border-radius: var(--r-lg); }
+/* 派圈图标自带黑底：深色主题下和页面底色几乎一样，描一圈细边，方块的轮廓才在 */
+.hnav-logo { flex: none; width: 64rpx; height: 64rpx; border-radius: var(--r-lg); border: 1rpx solid var(--line); box-sizing: border-box; }
 .hnav-main { flex: 1; min-width: 0; margin-left: var(--sp-4); display: flex; flex-direction: column; line-height: 1.3; }
 .hnav-t { font-size: var(--fs-head); font-weight: var(--fw-bold); color: var(--ink); }
 .hnav-s { font-size: var(--fs-min); color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

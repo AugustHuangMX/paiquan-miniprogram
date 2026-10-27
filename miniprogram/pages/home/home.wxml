@@ -62,6 +62,12 @@
     </view>
   </block>
 
+  <!-- 广告位：放在「现在玩什么」和「大家在玩什么」中间（用户 2026-10-27 定的）。
+       未配置 unit-id 时整个组件不渲染（见 utils/ad.js） -->
+  <view class="adbox">
+    <ad wx:if="{{adUnit}}" unit-id="{{adUnit}}" ad-intervals="60" binderror="onAdError"></ad>
+  </view>
+
   <!-- 大家在玩什么：所有 Evo 玩家近 7 天的统计（分包 evo 的组件；人数不够或取不到时整块不显示） -->
   <evo-crowd lang="{{lang}}"></evo-crowd>
 
@@ -80,11 +86,6 @@
       <text class="hmore-t">{{T.navGames}}</text>
       <text class="hmore-s">{{T.homeGamesSub}}</text>
     </view>
-  </view>
-
-  <!-- 广告位：未配置 unit-id 时整个组件不渲染（见 utils/ad.js）。放在页脚上方，不挡任何内容 -->
-  <view class="adbox">
-    <ad wx:if="{{adUnit}}" unit-id="{{adUnit}}" ad-intervals="60" binderror="onAdError"></ad>
   </view>
 
   <view class="foot">
