@@ -60,6 +60,12 @@ function setByPath(obj, key, value) {
     arr[Number(m[2])][m[3]] = value;
     return;
   }
+  // 首页的 tick 会写 "hero.cd" 这种（对象里的一个字段）
+  const d = key.match(/^([^.[\]]+)\.(.+)$/);
+  if (d && obj[d[1]] && typeof obj[d[1]] === "object") {
+    obj[d[1]][d[2]] = value;
+    return;
+  }
   obj[key] = value;
 }
 
@@ -113,6 +119,73 @@ function loadPage(name, opts = {}) {
 
 const flush = () => new Promise((r) => setTimeout(r, 5));
 const actionsOf = (calls) => calls.filter((c) => c.name === "apex").map((c) => c.data.action);
+
+/* ============================================================
+   首页（2026-10-27 起第 1 个 tab）
+   ============================================================ */
+describe("首页", () => {
+  test("onLoad 只打地图轮换这一个接口（Evo 那两块是分包组件自己取）", async () => {
+    const { inst, calls } = loadPage("home", { responses: { rotation: rotationResult() } });
+    inst.onLoad();
+    await flush();
+    assert.deepEqual(actionsOf(calls), ["rotation"]);
+  });
+
+  test("大卡默认是排位，其余是小卡；外卡没开也给一张小卡", async () => {
+    const { inst } = loadPage("home", { responses: { rotation: rotationResult() } });
+    inst.onLoad();
+    await flush();
+    assert.equal(inst.data.hero.id, "ranked");
+    assert.equal(inst.data.hero.map, "奥林匹斯");
+    assert.deepEqual(inst.data.smalls.map((m) => m.id), ["pubs", "wildcard", "mixtape"]);
+    assert.equal(inst.data.smalls[1].active, false);
+    assert.equal(inst.data.err.kind, "");
+    assert.match(inst.data.subline, /好 · /, "问候语后面接数据更新时间");
+  });
+
+  test("「全部地图」⚙ 里置顶匹配后，首页大卡跟着变", async () => {
+    const { inst } = loadPage("home", { responses: { rotation: rotationResult() } });
+    require(path.join(MP, "utils", "prefs.js")).set("pin", "pubs");
+    inst.onLoad();
+    await flush();
+    assert.equal(inst.data.hero.id, "pubs");
+  });
+
+  test("取数失败：显示错误，不留一张假卡片", async () => {
+    const { inst } = loadPage("home", { failAll: true });
+    inst.onLoad();
+    await flush();
+    assert.ok(inst.data.err.kind, "要有错误提示");
+    assert.equal(inst.data.hero, null);
+    assert.deepEqual(inst.data.smalls, []);
+  });
+
+  test("转发：上一局的分享按钮带着标题；右上角菜单写现在大卡上的地图", async () => {
+    const { inst } = loadPage("home", { responses: { rotation: rotationResult() } });
+    inst.onLoad();
+    await flush();
+    const btn = inst.onShareAppMessage({ from: "button", target: { dataset: { title: "我刚在奥林匹斯拿了第 2 名" } } });
+    assert.deepEqual(btn, { title: "我刚在奥林匹斯拿了第 2 名", path: "/pages/home/home" });
+    const menu = inst.onShareAppMessage({ from: "menu" });
+    assert.match(menu.title, /奥林匹斯/);
+    assert.equal(menu.path, "/pages/home/home");
+  });
+
+  test("切成英文后回到首页：整页跟着换（地图名、问候语）", async () => {
+    const { inst } = loadPage("home", { responses: { rotation: rotationResult() } });
+    inst.onLoad();
+    await flush();
+    require(path.join(MP, "utils", "i18n.js")).setLang("en");
+    try {
+      inst.onShow();
+      assert.equal(inst.data.lang, "en");
+      assert.equal(inst.data.hero.map, "Olympus");
+      assert.match(inst.data.subline, /^Good /);
+    } finally {
+      require(path.join(MP, "utils", "i18n.js")).setLang("zh");
+    }
+  });
+});
 
 /* ============================================================
    地图页

@@ -1,0 +1,32 @@
+/* 大家在玩什么。区块标题、卡片、并排、进度条用首页的 pages/home/home.wxss（apply-shared） */
+@import "../../evo.wxss";
+
+.evo-cw-k { display: block; font-size: var(--fs-sub); color: var(--ink2); }
+
+/* ---------- 热门传奇 ---------- */
+.evo-cw-lg { margin-top: var(--sp-4); }
+.evo-cw-line { display: flex; align-items: center; }
+.evo-cw-face { flex: none; width: 48rpx; height: 48rpx; border-radius: var(--r-full); background: var(--raised); }
+.evo-cw-face-t { line-height: 48rpx; text-align: center; font-size: var(--fs-min); font-weight: var(--fw-bold); color: var(--ink); }
+.evo-cw-name { flex: 1; min-width: 0; margin-left: var(--sp-3); font-size: var(--fs-sub); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evo-cw-pct { flex: none; margin-left: var(--sp-2); font-size: var(--fs-sub); font-weight: var(--fw-bold); color: var(--ink); font-variant-numeric: tabular-nums; }
+.evo-cw-bar { margin-top: var(--sp-2); }
+.evo-cw-fill { background: var(--prog); }
+
+/* ---------- 最好的组合：三个头像叠在一起 ---------- */
+.evo-cw-faces { display: flex; margin-top: var(--sp-4); }
+.evo-cw-big {
+  flex: none;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: var(--r-full);
+  background: var(--raised);
+  border: 4rpx solid var(--card);
+}
+.evo-cw-big-t { line-height: 72rpx; text-align: center; font-size: var(--fs-sub); font-weight: var(--fw-bold); color: var(--ink); }
+.evo-cw-over { margin-left: -16rpx; }
+.evo-cw-names { display: block; margin-top: var(--sp-3); font-size: var(--fs-sub); font-weight: var(--fw-bold); color: var(--ink); line-height: 1.45; }
+.evo-cw-nums { display: flex; align-items: flex-end; margin-top: var(--sp-4); }
+.evo-cw-num { display: flex; flex-direction: column; margin-right: var(--sp-6); }
+.evo-cw-v { font-size: var(--fs-title); font-weight: var(--fw-num); color: var(--ink); line-height: 1.2; }
+.evo-cw-u { font-size: var(--fs-min); color: var(--ink2); }

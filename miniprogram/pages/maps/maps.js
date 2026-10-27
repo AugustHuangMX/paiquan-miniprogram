@@ -172,6 +172,13 @@ Page({
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
   },
 
+  /** 返回：从首页点进来的就退回去；从分享卡片直接打开的（页面栈里只有这一页）回首页 */
+  onBack: function () {
+    var stack = typeof getCurrentPages === "function" ? getCurrentPages() : [];
+    if (stack.length > 1) wx.navigateBack();
+    else wx.switchTab({ url: "/pages/home/home" });
+  },
+
   /** 「匹配默认收起」的提示：选了不再显示就永远不再出现 */
   onHidePubsHint: function () {
     prefs.set("hide_pubs_hint", true);

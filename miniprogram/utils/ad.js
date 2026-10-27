@@ -35,6 +35,8 @@ var AD_UNITS = {
   // 广告只露一条边，基本不计曝光。新位用较扁的模板。
   // 2026-10-16 用户决定：地图页也放广告（位置在四张模式卡之后、页脚之前，
   // 不影响"第一屏四行占满"那条）。
+  // 2026-10-27 首页成了第 1 个 tab（地图页变成首页里点进去的「全部地图」），首页也放一个，位置同样在页脚上方
+  home: "adunit-419d525ab9b59819",
   maps: "adunit-419d525ab9b59819",
   predator: "adunit-419d525ab9b59819",
   // ⚠️ 2026-10-16 修：这里原来叫 stats（战绩页）。战绩页已经删了，
@@ -49,7 +51,7 @@ var AD_UNITS = {
 var VALID = /^adunit-[0-9a-z]+$/i;
 
 /**
- * @param {string} page 页面名：maps / predator / matches / ringguessr
+ * @param {string} page 页面名：home / maps / predator / matches / ringguessr
  * @returns {string} 合法的广告位 ID；没配或格式不对则返回空串
  */
 function adUnitFor(page) {

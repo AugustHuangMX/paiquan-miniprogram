@@ -103,7 +103,9 @@ describe("主题 · 两套变量必须完全对齐", () => {
   });
 
   test("两套值不许一模一样（那说明忘了改）", () => {
-    const same = Object.keys(DARK).filter((k) => LIGHT[k] === DARK[k] && k !== "accent" && k !== "accent-ink");
+    // 有意两套一样的：强调红；首页大卡（2026-10-27）两套主题都是深色底，卡上的白字和琥珀色倒计时当然也一样
+    const SAME_ON_PURPOSE = ["accent", "accent-ink", "hero-ink", "hero-warn"];
+    const same = Object.keys(DARK).filter((k) => LIGHT[k] === DARK[k] && !SAME_ON_PURPOSE.includes(k));
     assert.deepEqual(same, [], "这些变量深浅两套取值相同，可能漏改：" + same.join(", "));
   });
 

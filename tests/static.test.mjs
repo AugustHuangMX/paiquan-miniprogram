@@ -195,14 +195,15 @@ describe("底部标签", () => {
   const appJson = JSON.parse(read(path.join(MP, "app.json")));
   const bar = appJson.tabBar;
 
-  test("配了 tabBar，且五个标签顺序是 地图 / 战绩 / 比赛 / 小游戏 / 我的", () => {
+  test("配了 tabBar，且五个标签顺序是 首页 / 战绩 / 比赛 / 小游戏 / 我的", () => {
     assert.ok(bar, "app.json 里没有 tabBar");
     assert.equal(bar.list.length, 5);
     // 第 4 个：2026-10-16 从「战绩」换成「猜圈」，2026-10 又扩成「小游戏」分类
     //（里面是猜圈练习 + 英雄/武器轮盘，用户要求放在同一个分类下）。
     // 2026-10-27：第 2 个「排位专区」改叫「战绩」（顶部切换：我的战绩 ｜ 排位资讯），加了第 5 个「我的」（Evo 绑定）。
+    // 2026-10-27（首页改版）：第 1 个从「地图」换成「首页」，地图页变成首页里点「全部地图」进去的子页面。
     // 微信的 tabBar 最多 5 个，已经满了。
-    assert.deepEqual([...bar.list].map((t) => t.text), ["地图", "战绩", "比赛", "小游戏", "我的"]);
+    assert.deepEqual([...bar.list].map((t) => t.text), ["首页", "战绩", "比赛", "小游戏", "我的"]);
     assert.equal(bar.list[1].pagePath, "pages/predator/predator", "「战绩」还是原来排位专区那一页（排位资讯是它的一栏）");
   });
 
@@ -219,9 +220,14 @@ describe("底部标签", () => {
     assert.equal(tabPages.includes("pages/wheel/wheel"), false);
   });
 
-  test("第一个标签就是默认首页（打开小程序先看到地图）", () => {
+  test("第一个标签就是默认首页（打开小程序先看到首页，地图轮换在首页上）", () => {
     assert.equal(appJson.pages[0], bar.list[0].pagePath);
-    assert.match(bar.list[0].pagePath, /maps/);
+    assert.equal(bar.list[0].pagePath, "pages/home/home");
+  });
+
+  test("地图页还在（首页点「全部地图」进去），但不再是 tab", () => {
+    assert.ok(appJson.pages.includes("pages/maps/maps"), "地图页没注册进 pages");
+    assert.equal(bar.list.some((t) => t.pagePath === "pages/maps/maps"), false);
   });
 
   test("每个标签的页面都在 pages 列表里", () => {
@@ -300,7 +306,8 @@ describe("广告位", () => {
 /* 带广告位和页脚的主页面：广告那几条规矩只对它们成立。
    （猜圈练习 / 轮盘 / 小游戏分类页是工具页，没有广告位也没有页脚 ——
     广告位多了反而把"取一个数就走"的路径变长，所以是**有意不加**。） */
-const AD_PAGES = ["maps", "predator", "matches"];
+// 2026-10-27：加了首页（home），广告位同样在页脚上方
+const AD_PAGES = ["home", "maps", "predator", "matches"];
 /* 需要做"通用正确性"检查的页面：WXML 绑定一致性、标签成对闭合、样式类有定义。
    新加的页面要加进来 —— 这几条正是抓"字段写错/标签没闭合/类名拼错"的网。
    （原来的 pages/mapview「交互地图」已删，所以这里也没有它了。） */
@@ -312,7 +319,8 @@ const pageJsPath = (n) => path.join(pageDir(n), pageBase(n) + ".js");
 const pageWxmlPath = (n) => path.join(pageDir(n), pageBase(n) + ".wxml");
 const pageWxssPath = (n) => path.join(pageDir(n), pageBase(n) + ".wxss");
 /* 自定义组件（目前都是 Evo 战绩的，在分包 evo 里）：和页面一样做绑定一致性 / 标签闭合 / 样式类检查 */
-const COMPONENT_NAMES = ["evo/components/overview", "evo/components/devices"];
+// 2026-10-27：加了首页的两个（home：段位、今日、上一局；crowd：大家在玩什么）
+const COMPONENT_NAMES = ["evo/components/overview", "evo/components/devices", "evo/components/home", "evo/components/crowd"];
 const compPath = (n, ext) => path.join(MP, n, "index" + ext);
 
 /** 读 wxss，把 @import 进来的文件也接上（Evo 的页面和组件共用 evo/evo.wxss） */
@@ -514,6 +522,30 @@ function vmFieldNames() {
   collect(evoDev);
   evoDev.devices.forEach(collect);
   evoDev.accounts.forEach(collect);
+
+  // 首页（2026-10-27）：大卡 / 小卡 / 每秒的字段（utils/home.js），Evo 那两块（view.js 的 homeView / crowdView）
+  const homeUtil = require(path.resolve(HERE, "..", "miniprogram", "utils", "home.js"));
+  vm.buildModes(core.normalizeRotation(raw)).forEach((m) => {
+    const c = homeUtil.smallCard(m, "zh");
+    collect(c);
+    collect(homeUtil.tickFields(c, 1500, "zh"));
+  });
+  const evoHome = evoView.homeView({ bound: true, total: 1, synced_at: 1,
+    rank: { tier: "diamond", division: "II", progress: 1, score: 1, when: "x", from_lobby: true },
+    step: { next_tier: "diamond", next_division: "I", gap: 1, pct: 1 },
+    day: { games: 1, avg_place: 1, kills: 1, damage: 1, rp: 1 },
+    last: { id: "x", placement: 1, rp: 1, legend: "恶灵", kills: 1, damage: 1, map: "残月" } }, i18nT, 112, 2);
+  collect(evoHome);
+  collect(evoHome.rank);
+  collect(evoHome.step);
+  collect(evoHome.step.gap);
+  collect(evoHome.last);
+  const evoCrowd = evoView.crowdView({ days: 7, players: 9, enough: true, legends: [{ name: "恶灵", pct: 1 }],
+    combo: { legends: ["恶灵", "命脉", "直布罗陀"], avg_place: 1, games: 3 } }, i18nT);
+  collect(evoCrowd);
+  evoCrowd.legends.forEach(collect);
+  collect(evoCrowd.combo);
+  evoCrowd.combo.faces.forEach(collect);
 
   // 中英文词表。页面把 i18n.T(lang) 整个放进 data，WXML 里写 {{T.xxx}}，
   // 所以词表的每个 key 都要登记（否则会被当成"没有来源的标识符"）。

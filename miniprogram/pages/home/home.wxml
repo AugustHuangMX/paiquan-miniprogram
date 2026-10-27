@@ -1,0 +1,94 @@
+<view class="wrap theme-{{theme}}" data-lang="{{lang}}">
+
+  <!-- 自定义导航栏：左边品牌标 + 名字 + 问候语，右边留出胶囊的位置（尺寸算法同地图页） -->
+  <view class="navbar hnav" style="padding-top: {{navTop}}px; height: {{navH}}px;">
+    <image class="hnav-logo" src="/assets/logo-mark.png" mode="aspectFit"></image>
+    <view class="hnav-main">
+      <text class="hnav-t">{{T.navHome}}</text>
+      <text class="hnav-s">{{subline}}</text>
+    </view>
+    <view class="navspace" style="width: {{navRight}}px;"></view>
+  </view>
+
+  <!-- Evo：没绑定时教怎么绑定，绑定了显示段位、今日、上一局（分包 evo 的组件，异步加载） -->
+  <evo-home id="evo-home" lang="{{lang}}"></evo-home>
+
+  <!-- 现在玩什么：置顶的模式一张深色大卡，其余的并排小卡。点哪张都进「全部地图」（原来的地图页） -->
+  <view class="hsec">
+    <text class="hsec-t">{{T.homeNow}}</text>
+    <view class="hsec-link" hover-class="hpressed" bindtap="onAllMaps">{{T.homeAllMaps}} ›</view>
+  </view>
+
+  <view wx:if="{{err.kind}}" class="msg msg-{{err.style}}">
+    <text class="msg-title">{{err.title}}</text>
+    <text class="msg-body">{{err.message}}</text>
+  </view>
+
+  <view wx:elif="{{loading && !hero}}" class="hhero hhero-skel"></view>
+
+  <block wx:elif="{{hero}}">
+    <view class="hhero" hover-class="hpressed" bindtap="onAllMaps">
+      <!-- 等高线只是装饰（压得很淡），不带任何信息 -->
+      <image class="hhero-deco" src="/assets/home-contour.svg" mode="aspectFill"></image>
+      <view class="hhero-top">
+        <text class="hhero-chip">{{hero.label}}</text>
+        <text wx:if="{{hero.active}}" class="hhero-lab">{{T.rotateIn}}</text>
+      </view>
+      <block wx:if="{{hero.active}}">
+        <text class="hhero-map">{{hero.map}}</text>
+        <view class="hhero-row">
+          <text class="hhero-sub">{{hero.sub}}</text>
+          <text class="hhero-cd {{hero.urgent ? 'hhero-cd-urgent' : ''}}">{{hero.cd}}</text>
+        </view>
+        <view class="hbar hbar-hero">
+          <view class="hbar-in" style="width: {{hero.pct}}%; background: {{hero.tint}};"></view>
+        </view>
+      </block>
+      <text wx:else class="hhero-map hhero-off">{{T.modeOff}}</text>
+    </view>
+
+    <view wx:if="{{smalls.length}}" class="hsmalls">
+      <view wx:for="{{smalls}}" wx:key="id" class="hsmall {{index === smalls.length - 1 ? 'hsmall-end' : ''}}" hover-class="hpressed" bindtap="onAllMaps">
+        <text class="hsmall-lab">{{item.title}}</text>
+        <block wx:if="{{item.active}}">
+          <text class="hsmall-map">{{item.map}}</text>
+          <text class="hsmall-soon">{{item.soon}}</text>
+          <view class="hbar">
+            <view class="hbar-in" style="width: {{item.pct}}%; background: {{item.tint}};"></view>
+          </view>
+        </block>
+        <text wx:else class="hsmall-soon">{{T.modeOff}}</text>
+      </view>
+    </view>
+  </block>
+
+  <!-- 大家在玩什么：所有 Evo 玩家近 7 天的统计（分包 evo 的组件；人数不够或取不到时整块不显示） -->
+  <evo-crowd lang="{{lang}}"></evo-crowd>
+
+  <!-- 赛事与更多：点了切到「比赛」「小游戏」tab -->
+  <view class="hsec">
+    <text class="hsec-t">{{T.homeMore}}</text>
+  </view>
+  <view class="hpair">
+    <view class="hcard hmore hcard-l" hover-class="hpressed" bindtap="onEsports">
+      <image class="hmore-ic" src="/assets/home-trophy.svg" mode="aspectFit"></image>
+      <text class="hmore-t">{{esports ? esports.name : T.navMatches}}</text>
+      <text wx:if="{{esports && esports.sub}}" class="hmore-s">{{esports.sub}}</text>
+    </view>
+    <view class="hcard hmore" hover-class="hpressed" bindtap="onGames">
+      <image class="hmore-ic" src="/assets/home-gamepad.svg" mode="aspectFit"></image>
+      <text class="hmore-t">{{T.navGames}}</text>
+      <text class="hmore-s">{{T.homeGamesSub}}</text>
+    </view>
+  </view>
+
+  <!-- 广告位：未配置 unit-id 时整个组件不渲染（见 utils/ad.js）。放在页脚上方，不挡任何内容 -->
+  <view class="adbox">
+    <ad wx:if="{{adUnit}}" unit-id="{{adUnit}}" ad-intervals="60" binderror="onAdError"></ad>
+  </view>
+
+  <view class="foot">
+    {{T.foot1}}
+    {{T.foot2}}
+  </view>
+</view>

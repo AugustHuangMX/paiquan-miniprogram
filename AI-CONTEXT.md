@@ -29,9 +29,11 @@
 4. **两个主题、两种语言都是真需求**。新样式必须在 深/浅 × 中/英 四种组合下同时成立。
 5. **先改工艺再动风格**。字号偏小、对比度不达标是硬缺陷，优先级高于任何审美偏好。
 
-**信息架构**：地图页现在是四行自上而下 = 匹配 → 排位 → 外卡 → 轮换。
-顺序由 `utils/viewmodel.js` 决定，**不在 WXML 里写死**。
-2026-10-27 起地图页和「我的」页交给 Evo 作者（August）重构，**结构可以改**（原先"不可改"已取消）；重构完以这里届时写的为准。
+**信息架构**（2026-10-27 首页改版后；首页和「我的」页由 Evo 作者 August 负责，结构可以改）：
+- **首页**（第 1 个 tab，`pages/home/`）自上而下：Evo（没绑定 = 怎么绑定；绑定了 = 我的段位、今日、上一局）→
+  现在玩什么（置顶的模式一张深色大卡 + 其余模式的小卡）→ 大家在玩什么（所有 Evo 玩家近 7 天）→ 赛事与更多（下一场比赛、小游戏）。
+- **全部地图**（`pages/maps/`，首页点进去的子页面，不再是 tab）：原来的四行 = 匹配 → 排位 → 外卡 → 轮换，
+  顺序由 `utils/viewmodel.js` 决定，**不在 WXML 里写死**。⚙ 里的「显示哪些模式」「置顶」首页也跟着走。
 
 **明确不做的三件事**（别"顺手加上"）
 
@@ -139,7 +141,8 @@ pages/maps.wxml  {{...}}  ← 只渲染，不含业务判断
 
 | 页面 | 路径 | 数据来源 | 关键文件 | 备注 |
 |---|---|---|---|---|
-| 地图（tab） | `pages/maps/` | 云端 `rotation` + `schedule` | `viewmodel.js`、`prefs.js` | **旗舰页**；四行卡片 + 倒计时 + 设置面板 |
+| 首页（tab，2026-10-27） | `pages/home/` | 云端 `rotation`；Evo 那两块走 `evo_mp`（`home` / `crowd`）；赛事卡用离线 `next_match_data.js` | `home.js`、`viewmodel.js`、分包 `evo/components/home`、`evo/components/crowd` | 旗舰页（见 §1 信息架构）；没有 ⚙（语言、主题在「我的」里切） |
+| 全部地图（首页点进去） | `pages/maps/` | 云端 `rotation` + `schedule` | `viewmodel.js`、`prefs.js` | 原来的地图页：四行卡片 + 倒计时 + 设置面板；左上角返回（分享卡片直接打开时回首页） |
 | 战绩（tab，原排位专区） | `pages/predator/` | 云端 `predator`/`config`/`rankdist`/`teams`/`player` + 离线 `prostats_data.js`；「我的战绩」走 `evo_mp` | `rankdist.js`、`prostats.js`、`viewmodel.js`、`evo/utils/view.js` | 顶部切换：我的战绩（Evo，§17）｜排位资讯（猎杀线 / 职业选手数据 / 段位分布 / 战队 / 战绩查询） |
 | 比赛（tab） | `pages/matches/` | **完全离线**：`algs_data.js` + `next_match_data.js` | `algs.js`、`nextmatch.js` | 不联网、不耗云函数配额 |
 | 小游戏（tab） | `pages/games/` | 本地 | `rings.js`、`ringpick.js`、`wheel_data.js` | 分类入口页（3 个入口卡片） |
@@ -150,9 +153,10 @@ pages/maps.wxml  {{...}}  ← 只渲染，不含业务判断
 | 全部对局 / 对局详情 / 绑定电脑 | 分包 `evo/matches`、`evo/match`、`evo/bind` | 云端 `evo_mp` | `evo/utils/view.js` | Evo 战绩的子页面（§17） |
 
 **注意**：`pages/maps/` **没有自己的 `.wxss`**（只有 js/json/wxml），它的样式全部在根目录 `app.wxss` 里。
-其他 6 个页面各自有 `.wxss`。改地图页视觉 = 改 `app.wxss`（全局文件，会波及其他页面，小心）。
+改「全部地图」视觉 = 改 `app.wxss`（全局文件，会波及其他页面，小心）。
+首页有自己的 `pages/home/home.wxss`（类名都以 `h` 开头），分包里首页的两个组件（`apply-shared`）也用它的 `.hcard` / `.hpair` / `.hbar`。
 
-**广告位**：`utils/ad.js` 的 `AD_UNITS` 已填**真实**广告位 ID（`adunit-419d525ab9b59819`，4 个页面共用），
+**广告位**：`utils/ad.js` 的 `AD_UNITS` 已填**真实**广告位 ID（`adunit-419d525ab9b59819`，首页、全部地图、战绩、比赛、猜圈共用），
 流量主已开通。ID 为空/格式不对时 `adUnitFor()` 返回空串，页面 `wx:if` 不成立，组件完全不渲染 —— 填错不会崩。
 
 ---
@@ -214,7 +218,8 @@ pages/maps.wxml  {{...}}  ← 只渲染，不含业务判断
 **数值**
 
 - 换算基准 375px：**1px = 2rpx**。
-- 字号只允许 7 档：`44 / 40 / 34 / 30 / 28 / 26 / 24` rpx。**24rpx 是绝对下限**
+- 字号只允许 7 档：`44 / 40 / 34 / 30 / 28 / 26 / 24` rpx（首页另有两档大数字 `--fs-hero` 64、`--fs-big` 52，
+  2026-10-27 首页改版加的，只给首页和它的两个组件用）。**24rpx 是绝对下限**
   （微信官方最小档，12pt）。历史上出现过 19rpx（9.5px）—— 这是"看着累"的主因，别再犯。
 - 间距只走 4rpx 网格：4 / 8 / 12 / 16 / 20 / 24 / 32 / 64。
 - 字重只留 3 档：400 / 700 / 800（800 仅用于大数字）。不存在 600（中文字体上几乎同形）。
@@ -351,11 +356,11 @@ $env:APEX_API_KEY="你的key"; node tests/live.mjs
 4. 云函数**只能用 Node 内置模块** + `wx-server-sdk`（`~2.7.x`）；不许用全局 `fetch`。
 5. 云函数**任何**数据库/上游错误都要降级，不许把异常抛给前端。
 6. 不用 `wx.setStorage*`（`prefs.js` 例外），不许存用户数据。
-7. 不硬编码颜色（白色除外）；不加新字号档位；不小于 24rpx。
+7. 不硬编码颜色（白色除外）；不加新字号档位（首页的 `--fs-hero` / `--fs-big` 除外，见 §7）；不小于 24rpx。
 8. 浅色主题必须覆盖深色的每一个变量；`color` 在 `.wrap` 上再声明一次。
 9. WXML 不写死中文；中英词表必须成对。
 10. 不编数据：取不到 → 留空/显示英文/整块隐藏，不许给 0、空数组、占位文案。
-11. 地图页四行顺序不写死在 WXML 里，由 viewmodel 决定。
+11. 「全部地图」四行顺序不写死在 WXML 里，由 viewmodel 决定；首页的大卡、小卡由 `utils/home.js` 挑。
 12. 不用 EA 的 logo、官方纯红、官方地图以外来源的地图照片；产品名不带 APEX。
 13. `pages/maps/` 没有自己的 wxss，改地图页样式 = 改 `app.wxss`（会波及其他页面）。
 14. `cloudfunctions/apex/` 现有代码是 **ES5 风格**（`var` + `function`）。别在里面混入 `?.`、`??`、顶层 await
@@ -557,10 +562,12 @@ git update-index --no-skip-worktree project.config.json miniprogram/app.js
 | 位置 | 内容 |
 |---|---|
 | 「战绩」tab（`pages/predator/`） | 顶部切换「我的战绩 ｜ 排位资讯」。排位资讯 = 原排位专区，**一点没改**，只是包进一个 `hidden` 的 view。绑定了 Evo 的人默认看「我的战绩」，其他人照旧先看排位资讯（`onEvoStatus`） |
+| 首页（`pages/home/`，2026-10-27） | 最上面一块（分包组件 `evo/components/home`，云函数 `evo_mp.home`）：没绑定时三步怎么绑 + 扫码绑定；绑定了显示我的段位（离下一段还差多少）、今日（局数、场均名次、击杀和伤害的总数）、上一局（可转发）。中间「大家在玩什么」（`evo/components/crowd`，`evo_mp.crowd`）：所有 Evo 玩家近 7 天的热门传奇、场均名次最好的三人组合；**少于 5 位玩家时整块不显示**，结果存在集合 `evo_stats` 里管 30 分钟 |
 | 「我的」tab（`pages/me/`） | Evo 的绑定：电脑、解绑、账号 |
 | 分包 `miniprogram/evo/` | 其余全部：两个组件（主包页面异步引用）、三个子页面、段位徽章、`utils/view.js` |
 
 **为什么用分包**：主包 1.88 MB / 上限 2 MB。Evo 的东西放分包，主包只多了「我的」外壳、一个 tab 图标和词条（约 15 KB）。
+首页改版（2026-10-27）主包又多了约 37 KB（首页本身、`utils/home.js`、几个图标和词条）；首页上 Evo 的两块（`home`、`crowd` 组件）还是在分包里。
 
 **数据流**
 
@@ -579,7 +586,7 @@ git update-index --no-skip-worktree project.config.json miniprogram/app.js
 - **统计**在 `evo_mp/stats.js`，和 Evo 电脑窗口同一套算法；四舍五入照 Python（正好一半取偶数），两边数字才对得上。
 - 传奇、地图名是 Evo 从游戏画面读的中文。英文模式：传奇名 / 头像按 id 从 `codex_data.js` 取（图鉴有 4 个中文名和游戏里不一样，所以按 id 对），地图名反查 `core.MAP_CN`；查不到保留原文。
 
-**隐私**：只存战绩数字、段位、队友的名字和 ID，不存截图。`evo_devices` 里存了绑定者的 openid（和追踪名单 `tracked_players` 一样，用来认"这是谁的数据"）。
+**隐私**：只存战绩数字、段位、队友的名字和 ID，不存截图。「大家在玩什么」只回汇总的数字和传奇名，不回任何人的名字。`evo_devices` 里存了绑定者的 openid（和追踪名单 `tracked_players` 一样，用来认"这是谁的数据"）。
 解绑时每次问要不要同时删云端数据。扫码用 `wx.scanCode`（不在隐私接口黑名单里）。
 
 **上线前要在云开发控制台做的事**（不做也不会影响别的功能，只是 Evo 那部分用不了）：
@@ -599,7 +606,8 @@ git update-index --no-skip-worktree project.config.json miniprogram/app.js
 
 | 想做的事 | 改哪里 | 必须跑 |
 |---|---|---|
-| 改地图页视觉 | `app.wxss`（+ `pages/maps/maps.wxml` 结构） | theme, static, page |
+| 改首页 | `pages/home/`（视觉在 `home.wxss`）、`utils/home.js`；Evo 那两块在 `evo/components/home`、`crowd` + `evo/utils/view.js` | home, evo, static, page |
+| 改「全部地图」视觉 | `app.wxss`（+ `pages/maps/maps.wxml` 结构） | theme, static, page |
 | 加一句文案 | `utils/i18n.js` 的 `DICT.zh` **和** `DICT.en` | i18n, page |
 | 加一张地图的中文名 | `utils/core.js` 的 `MAP_CN` + 两份同步 | i18n, sync, core |
 | 改四行顺序/卡片字段 | `utils/viewmodel.js` + `maps.wxml` | viewmodel, page |

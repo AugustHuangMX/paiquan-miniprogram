@@ -10,6 +10,8 @@
 // - overview：{ account, range } 我的战绩（段位、RP 走势、统计数字、最近对局、传奇表现）
 // - matches：{ account, mode, review, page } 全部对局（每页 20 局）
 // - match：{ id } 单局详情（含队友）
+// - home：{ account } 首页顶上那块（段位条、今日、上一局）；没绑定时只回 bound: false
+// - crowd：大家在玩什么（所有 Evo 玩家近 7 天的热门传奇、场均名次最好的组合；算一次管 30 分钟）
 // 回 { ok: true, ... } 或 { ok: false, error }：error 是代号（bad_code / used / expired / not_yours / not_found /
 // no_identity / bad_request / server），小程序按语言显示对应的话
 const cloud = require('wx-server-sdk')
@@ -20,6 +22,9 @@ const db = cloud.database()
 const _ = db.command
 
 const PER_PAGE = 20
+const CROWD_DAYS = 7
+const CROWD_MIN_PLAYERS = 5 // 少于 5 位 Evo 玩家时首页不显示「大家在玩什么」
+const CROWD_TTL_MS = 30 * 60 * 1000 // 首页人人都看，不能每次都把所有人的对局读一遍：算一次存起来，管 30 分钟
 
 // ---------- 读数据：集合还没建（还没有电脑传过数据）当作没有 ----------
 
@@ -194,6 +199,54 @@ async function match(openid, event) {
   return { ok: true, match: S.detailData(row), today: now.date, yesterday: now.yesterday }
 }
 
+async function home(openid, event) {
+  // 首页只看一个账号："全部账号"时按默认（最近玩过的那个），段位才有意义
+  const { devices, view, bounds, now, rows, lobby } = await loadAll(openid, event.account === 'all' ? null : event.account)
+  if (!devices.length) return { ok: true, bound: false }
+  const since = S.dayStartText(now)
+  const rank = S.rankCard(rows, lobby)
+  const synced = devices.map((d) => (d.last_upload_at ? new Date(d.last_upload_at).getTime() : 0))
+  return {
+    ok: true,
+    bound: true,
+    account: view.current,
+    total: rows.length,
+    synced_at: Math.max(0, ...synced) || null,
+    rank,
+    step: rank ? S.rankStep(rank.score, bounds) : null,
+    day: S.dayNumbers(rows.filter((r) => (r.ended_at || '') >= since)),
+    last: rows.length ? S.rowData(rows[rows.length - 1]) : null,
+  }
+}
+
+async function crowd() {
+  let cached = null
+  try {
+    cached = (await db.collection('evo_stats').doc('crowd').get()).data
+  } catch (err) {
+    cached = null
+  }
+  if (cached && cached.stats && Date.now() - cached.at < CROWD_TTL_MS) return { ok: true, ...cached.stats }
+  const since = S.daysAgoText(CROWD_DAYS)
+  const rows = await safe(() => getAll(db.collection('evo_matches').where({ ended_at: _.gte(since) })
+    .field({ uid: true, legend: true, placement: true, mates: true })), [])
+  const stats = { days: CROWD_DAYS, ...S.crowdStats(rows, { minPlayers: CROWD_MIN_PLAYERS }) }
+  await saveCrowd(stats)
+  return { ok: true, ...stats }
+}
+
+// 存不上只是下次再算一遍，不影响这次回的结果
+async function saveCrowd(stats) {
+  const write = () => db.collection('evo_stats').doc('crowd').set({ data: { stats, at: Date.now() } })
+  try {
+    await write()
+  } catch (err) {
+    if (!missingCollection(err)) return
+    await db.createCollection('evo_stats').catch(() => null)
+    await write().catch(() => null)
+  }
+}
+
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext()
   if (!OPENID) return { ok: false, error: 'no_identity' }
@@ -206,6 +259,8 @@ exports.main = async (event) => {
       case 'overview': return await overview(OPENID, event)
       case 'matches': return await matches(OPENID, event)
       case 'match': return await match(OPENID, event)
+      case 'home': return await home(OPENID, event)
+      case 'crowd': return await crowd()
       default: return { ok: false, error: 'bad_request' }
     }
   } catch (err) {

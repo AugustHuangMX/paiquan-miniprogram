@@ -68,9 +68,10 @@ function fill(tpl, vars) {
 
 function isEn(T) { return T && T.lang === "en"; }
 
-/** 带数量的词条：英文要分单复数（"1 match" / "2 matches"），模板里写 match{es}、need{s}；中文模板没有这两个空，不受影响 */
+/** 带数量的词条：英文要分单复数（"1 match" / "2 matches"），模板里写 match{es}、kill{p}（名词加 s）、need{s}（动词加 s）；
+ *  中文模板没有这几个空，不受影响 */
 function count(tpl, n, vars) {
-  var all = { n: n, es: n === 1 ? "" : "es", s: n === 1 ? "s" : "" };
+  var all = { n: n, es: n === 1 ? "" : "es", p: n === 1 ? "" : "s", s: n === 1 ? "s" : "" };
   Object.keys(vars || {}).forEach(function (k) { all[k] = vars[k]; });
   return fill(tpl, all);
 }
@@ -346,6 +347,100 @@ function devicesView(d, T) {
   };
 }
 
+/** 毫秒时间戳 → " 5 分钟前" / "刚刚"（同步时间用，跟手机上的时间比） */
+function agoText(ms, nowMs, T) {
+  var min = Math.floor((nowMs - ms) / 60000);
+  if (min < 1) return T.evoAgoNow;
+  if (min < 60) return fill(T.evoAgoMin, { n: min });
+  if (min < 24 * 60) return fill(T.evoAgoHour, { n: Math.floor(min / 60) });
+  return fill(T.evoAgoDay, { n: Math.floor(min / 1440) });
+}
+
+/** 带一个数字的句子拆成三段（数字要加粗）："升钻石 I 还差 {n}" → { pre: "升钻石 I 还差 ", n: "132", post: "" } */
+function splitAtNumber(tpl, vars, n) {
+  var parts = fill(tpl.replace("{n}", "\u0000"), vars).split("\u0000");
+  return { pre: parts[0], n: n, post: parts[1] || "" };
+}
+
+/**
+ * 首页顶上那块（云函数 home 的结果）。state：unbound（没绑定电脑）/ empty（绑定了还没有对局）/ ready
+ * @param {number} emblemRpx 段位徽章多大（rpx），和 home 组件的 .evo-hm-emblem 一样
+ * @param {number} nowMs 手机上的现在（算"同步于几分钟前"）
+ */
+function homeView(d, T, emblemRpx, nowMs) {
+  if (!d.bound) return { state: "unbound" };
+  if (!d.total) return { state: "empty" };
+  var ctx = { T: T, today: "", yesterday: "" };
+  var rank = rankView(d.rank, ctx, emblemRpx);
+  var step = d.step;
+  var day = d.day || {};
+  var last = d.last;
+  var lastView = null;
+  if (last) {
+    var lg = legend(last.legend, T);
+    var map = mapName(last.map, T);
+    var line = [];
+    if (has(last.kills)) line.push(count(T.evoKillsN, last.kills));
+    if (has(last.damage)) line.push(fill(T.evoDamageN, { n: core.num(last.damage) }));
+    if (map) line.push(map);
+    lastView = {
+      id: last.id,
+      place: has(last.placement) ? "#" + last.placement : DASH,
+      rp: has(last.rp) ? signed(last.rp) + " RP" : "",
+      rpCls: rpClass(last.rp),
+      legend: lg.name,
+      icon: lg.icon,
+      letter: lg.name ? lg.name.slice(0, 1) : "",
+      line: line.join(" · "),
+      // 转发卡片的标题；名次没读到就不提供分享（不编一个名次出来）
+      shareTitle: has(last.placement)
+        ? fill(map ? T.evoShareTitle : T.evoShareTitleNoMap, { place: last.placement, map: map })
+        : ""
+    };
+  }
+  return {
+    state: "ready",
+    synced: d.synced_at ? fill(T.evoSynced, { ago: agoText(d.synced_at, nowMs, T) }) : "",
+    rank: rank,
+    step: step ? {
+      pct: step.pct,
+      gap: splitAtNumber(T.evoGapTo, { rank: tierName(step.next_tier, step.next_division, T) }, core.num(step.gap))
+    } : null,
+    todayRp: signed(day.rp),
+    todayRpCls: rpClass(day.rp),
+    games: String(day.games || 0),
+    avgPlace: has(day.avg_place) ? "#" + oneDecimal(day.avg_place) : DASH,
+    kills: num(day.kills),
+    damage: num(day.damage),
+    last: lastView
+  };
+}
+
+/** 「大家在玩什么」（云函数 crowd 的结果）。人数不够、取不到时回 null（整块不显示） */
+function crowdView(d, T) {
+  if (!d || !d.enough || !d.legends || !d.legends.length) return null;
+  var widest = Math.max.apply(null, d.legends.map(function (l) { return l.pct; })) || 1;
+  var face = function (name) {
+    var lg = legend(name, T);
+    return { key: name, name: lg.name, icon: lg.icon, letter: lg.name.slice(0, 1) };
+  };
+  return {
+    source: count(T.crowdFrom, d.players, { days: d.days }),
+    legends: d.legends.map(function (l) {
+      var f = face(l.name);
+      f.pct = l.pct + "%";
+      f.width = Number((l.pct / widest * 100).toFixed(2));
+      return f;
+    }),
+    combo: d.combo ? {
+      faces: d.combo.legends.map(face),
+      names: d.combo.legends.map(function (n) { return legend(n, T).name; }).join(" · "),
+      avg: "#" + oneDecimal(d.combo.avg_place),
+      games: String(d.combo.games)
+    } : null
+  };
+}
+
 var ERROR_KEYS = {
   bad_code: "evoErrBadCode", used: "evoErrUsed", expired: "evoErrExpired", not_found: "evoErrNotFound",
   not_yours: "evoErrNotYours", network: "evoErrNetwork"
@@ -384,6 +479,8 @@ module.exports = {
   emptyText: emptyText,
   detail: detail,
   devicesView: devicesView,
+  homeView: homeView,
+  crowdView: crowdView,
   errText: errText,
   bindCodeFrom: bindCodeFrom,
   chartColors: chartColors

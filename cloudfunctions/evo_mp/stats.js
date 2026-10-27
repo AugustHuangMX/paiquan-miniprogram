@@ -153,9 +153,9 @@ function rankCard(rows, lobby) {
   const last = lobby.length ? lobby[lobby.length - 1] : null
   let found = null
   if (last && (!row || (last.read_at || '') >= (row.ended_at || ''))) {
-    found = { tier: last.rank_tier, division: last.rank_division, progress: last.rank_progress, when: last.read_at, lobby: true }
+    found = { tier: last.rank_tier, division: last.rank_division, progress: last.rank_progress, score: last.score, when: last.read_at, lobby: true }
   } else if (row) {
-    found = { tier: row.rank_tier, division: row.rank_division, progress: row.rank_progress, when: row.ended_at, lobby: false }
+    found = { tier: row.rank_tier, division: row.rank_division, progress: row.rank_progress, score: row.rank_score, when: row.ended_at, lobby: false }
   }
   const tier = found && tierKey(found.tier)
   if (!tier) return null
@@ -163,8 +163,39 @@ function rankCard(rows, lobby) {
     tier,
     division: DIVISIONS.includes(found.division) ? found.division : null,
     progress: has(found.progress) ? found.progress : null,
+    score: Number.isInteger(found.score) ? found.score : null,
     when: found.when || null,
     from_lobby: found.lobby,
+  }
+}
+
+// 首页段位条：离下一段还差多少分、这一段走了百分之几。分界线是 Evo 传来的 [这一段的起点分数, 段位名]；
+// 最高一段（没有下一段）或分数、分界线读不出来时回 null（不画这条）
+function rankStep(score, bounds) {
+  if (!Number.isInteger(score) || !bounds || !bounds.length) return null
+  const sorted = bounds.slice().sort((a, b) => a[0] - b[0])
+  const next = sorted.find((b) => b[0] > score)
+  const start = sorted.filter((b) => b[0] <= score).pop()
+  const name = next && boundName(next[1])
+  if (!start || !name) return null
+  return {
+    next_tier: name.tier,
+    next_division: name.division,
+    gap: next[0] - score,
+    pct: pyRound((score - start[0]) / (next[0] - start[0]) * 100, 1),
+  }
+}
+
+// 首页「今日」：局数、场均名次、击杀和伤害的总数、RP。
+// 总数要每一局都读到才算：有一局没读到就回 null（显示"—"），不把没读到的当作 0
+function dayNumbers(rows) {
+  const total = (ok, key) => (rows.length && rows.every(ok) ? rows.reduce((sum, r) => sum + r[key], 0) : null)
+  return {
+    games: rows.length,
+    avg_place: groupNumbers(rows).avg_place,
+    kills: total((r) => has(r.kills) && r.kills_counted !== true, 'kills'),
+    damage: total((r) => has(r.damage), 'damage'),
+    rp: rpSum(rows),
   }
 }
 
@@ -235,6 +266,50 @@ function legendBars(rows, top = 3) {
   })
 }
 
+// ---------- 大家在玩什么：所有 Evo 玩家最近几天的对局，只回统计数字和传奇名，不回任何人的名字 ----------
+
+// days 天前的那一刻，写成电脑上的时间文字（和 ended_at 比大小）
+function daysAgoText(days, tz = DEFAULT_TZ, nowMs = Date.now()) {
+  return new Date(nowMs + tz * 60000 - days * 86400000).toISOString().slice(0, 19).replace('T', ' ')
+}
+
+// rows：这几天所有人的对局（uid = 哪台电脑，一台电脑算一位玩家）
+// - legends：自己用的传奇里最热门的 top 个，pct = 占所有知道传奇的局的百分比
+// - combo：三个人传奇都读到了、名次也读到了的局，按三人组合分组，至少 comboGames 局的组合里场均名次最好的那个
+// 玩家少于 minPlayers 位时只回人数（几个人的数字说明不了"大家"）
+function crowdStats(rows, { minPlayers = 5, comboGames = 3, top = 3 } = {}) {
+  const players = new Set(rows.map((r) => r.uid)).size
+  if (players < minPlayers) return { players, enough: false }
+  const picked = rows.filter((r) => r.legend)
+  const counts = new Map()
+  for (const r of picked) counts.set(r.legend, (counts.get(r.legend) || 0) + 1)
+  const legends = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, top)
+    .map(([name, n]) => ({ name, pct: pyRound(n / picked.length * 100) }))
+  const combos = new Map()
+  for (const r of rows) {
+    const names = [r.legend, ...(r.mates || []).map((m) => m && m.legend)]
+    if (names.length !== 3 || !names.every(Boolean) || new Set(names).size !== 3 || !has(r.placement)) continue
+    const key = names.slice().sort().join('|')
+    if (!combos.has(key)) combos.set(key, { legends: names.slice().sort(), places: [] })
+    combos.get(key).places.push(r.placement)
+  }
+  let best = null
+  for (const c of combos.values()) {
+    if (c.places.length < comboGames) continue
+    const avg = c.places.reduce((a, b) => a + b, 0) / c.places.length
+    if (!best || avg < best.avg || (avg === best.avg && c.places.length > best.games)) {
+      best = { legends: c.legends, avg, games: c.places.length }
+    }
+  }
+  return {
+    players,
+    enough: true,
+    games: rows.length,
+    legends,
+    combo: best ? { legends: best.legends, avg_place: pyRound(best.avg, 1), games: best.games } : null,
+  }
+}
+
 // ---------- 账号：和 Evo 窗口一样，只有 1 个账号时不分账号；2 个以上时默认看最近玩过的 ----------
 
 // 几台电脑上的游戏账号合在一起：用过同一个名字的算同一个账号（同一个账号在两台电脑上打）
@@ -282,5 +357,6 @@ function byTime(key) {
 
 module.exports = {
   MODES, deviceTz, localNow, dayStartText, stampText, pyRound, rowData, detailData, groupNumbers, rpSum, rankCard,
-  rpChart, legendBars, mergeAccounts, accountView, publicAccounts, onlyAccount, byTime,
+  rankStep, dayNumbers, rpChart, legendBars, daysAgoText, crowdStats, mergeAccounts, accountView, publicAccounts,
+  onlyAccount, byTime,
 }

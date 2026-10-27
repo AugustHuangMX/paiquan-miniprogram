@@ -1,0 +1,15 @@
+{
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "派圈助手",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "light",
+  "backgroundColor": "#0a0c10",
+  "usingComponents": {
+    "evo-home": "/evo/components/home/index",
+    "evo-crowd": "/evo/components/crowd/index"
+  },
+  "componentPlaceholder": {
+    "evo-home": "view",
+    "evo-crowd": "view"
+  }
+}

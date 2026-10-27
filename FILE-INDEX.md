@@ -39,7 +39,8 @@
 
 | 页面 | 数据来自 | 说明 |
 |---|---|---|
-| `pages/maps/` | 云端（`rotation`/`schedule`） | **旗舰页**。四行卡片（匹配/排位/外卡/轮换）+ 倒计时 + 设置面板（语言/主题/模式显隐/置顶）+ 广告位。⚠️ **无 wxss**（样式在 `app.wxss`） |
+| `pages/home/` | 云端 `rotation`；分包组件走 `evo_mp` | **首页**（第 1 个 tab，2026-10-27）。Evo（`evo-home` 组件）→ 现在玩什么（大卡 + 小卡，`utils/home.js` 挑）→ 大家在玩什么（`evo-crowd` 组件）→ 赛事与更多 + 广告位。有自己的 `home.wxss` |
+| `pages/maps/` | 云端（`rotation`/`schedule`） | **全部地图**（首页点进去的子页面，2026-10-27 前是第 1 个 tab）。四行卡片（匹配/排位/外卡/轮换）+ 倒计时 + 设置面板（语言/主题/模式显隐/置顶）+ 广告位。⚠️ **无 wxss**（样式在 `app.wxss`） |
 | `pages/predator/` | 云端（`predator`/`config`/`rankdist`/`teams`/`player`）+ 离线 `prostats_data.js`；「我的战绩」走云函数 `evo_mp` | **「战绩」tab**（2026-10-27 前叫排位专区）。顶部切换：「我的战绩」= 分包 evo 的 overview 组件（Evo 同步的个人战绩）；「排位资讯」= 原来的猎杀分数线、职业选手数据、段位分布、战队专区、战绩查询 |
 | `pages/matches/` | **纯离线**（`algs_data.js` + `next_match_data.js`） | 下一场比赛 + ALGS 赛场（赛事/选取率/组合/战队排名）。不联网 |
 | `pages/games/` | 本地 | 小游戏分类入口页（3 张入口卡） |
@@ -60,6 +61,8 @@
 | `evo.wxss` | 共用样式（列表行、名次、按钮、账号切换），各页面 / 组件 `@import` |
 | `components/overview/` | 「我的战绩」：段位、RP 走势（canvas）、统计数字、最近 5 局、传奇表现 |
 | `components/devices/` | 「我的」里的 Evo：电脑列表、解绑（每次问要不要删云端数据）、账号、说明 |
+| `components/home/` | 首页最上面一块（2026-10-27）：没绑定时三步怎么绑；绑定了显示我的段位、今日、上一局（可转发） |
+| `components/crowd/` | 首页「大家在玩什么」：所有 Evo 玩家近 7 天的热门传奇、最好的三人组合（人数不够时整块不显示） |
 | `matches/` | 全部对局（筛选模式 / 只看待确认 / 切账号，每页 20 局） |
 | `match/` | 单局详情（这一局的数字 + 两名队友） |
 | `bind/` | 绑定确认（扫码后打开；小程序码的 scene 或 Evo 二维码的 c 是绑定码） |
@@ -74,6 +77,7 @@
 |---|---|---|
 | `core.js` | 29 KB | ✅ 归一化、格式化、uid 判定、错误分类、译名表 `MAP_CN`、涨幅窗口。**与 `cloudfunctions/apex/core.js` 字节一致** |
 | `viewmodel.js` | 30 KB | ✅ 数据 → 界面字段：四行顺序、倒计时、差额、分享链接 |
+| `home.js` | 5 KB | ✅ 首页：问候语、挑大卡小卡（跟「全部地图」⚙ 的设置）、「9 分后 → 残月」、赛事卡（`tests/home.test.mjs`） |
 | `i18n.js` | 37 KB | ✅ `DICT.zh` / `DICT.en` 两套词典 + 语言开关（默认 `zh`） |
 | `cloud.js` | 3 KB | 云函数调用封装：**永远 resolve、不 reject**，错误文案截断 60 字 |
 | `theme.js` | 3 KB | 主题开关 + `applyChrome()` 同步原生外壳（导航栏/tabBar/窗口底色） |
@@ -198,6 +202,7 @@
 | `fix-type-floor.mjs` / `fix-accent-border.mjs` | 一次性修正脚本（历史遗留，只作参考） |
 | `build_team_icons.mjs` | 抓 ALGS 队标 → `assets/teams/` |
 | `make-*-tabicon.py` | 生成 tabBar 图标 |
+| `make-home-assets.py` | 生成「首页」tab 图标和首页导航栏的品牌标 `logo-mark.png`（Noto Sans SC） |
 | `icon.html` / `tabicons.html` | 图标预览页 |
 
 ---

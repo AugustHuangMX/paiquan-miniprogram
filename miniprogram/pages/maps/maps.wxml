@@ -3,7 +3,9 @@
   <!-- 自定义导航栏：微信原生那条不接受任何自定义元素，
        而我们要在标题左边放 ⚙ —— 所以整条自己画（navigationStyle: custom）。
        高度由 JS 按状态栏 + 胶囊位置算好，各机型都不会错位。 -->
+  <!-- 2026-10-27 起这一页是首页里点「全部地图」进来的子页面（不再是 tab），左上角先放返回 -->
   <view class="navbar" style="padding-top: {{navTop}}px; height: {{navH}}px;">
+    <view class="navbtn navbtn-back" hover-class="navbtn-on" bindtap="onBack" aria-label="{{T.navBack}}">‹</view>
     <view class="navbtn {{panelOpen ? 'navbtn-on' : ''}}" bindtap="onTogglePanel">⚙</view>
     <text class="navtitle">{{T.navMaps}}</text>
     <text wx:if="{{updatedAt}}" class="navtime">{{updatedAt}}</text>

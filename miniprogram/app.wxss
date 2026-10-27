@@ -36,6 +36,15 @@ page {
   --err-ink: #ffb3b3;
   --warn-ink: #ffd591;
   --info-ink: #a9cfff;
+  /* 首页（2026-10-27）：「现在玩什么」的大卡**两套主题都是深色底**（示意图如此：浅色页面上一块深色卡最先被看到），
+     所以它有自己的一组颜色；--prog 是段位条、热门传奇这类进度条的填充色（非文字，对槽 ≥3:1） */
+  --hero-bg: #1d2330;
+  --hero-line: #343d4d;
+  --hero-ink: #f3f5f9;      /* 大卡底上 14.9:1 */
+  --hero-ink2: #aeb7c6;     /* 大卡底上 8.0:1 */
+  --hero-track: rgba(255, 255, 255, 0.14);
+  --hero-warn: #ffb020;
+  --prog: #5b8def;
 
   /* ---------- 排版令牌 ----------
      字号 7 档，含微信官方列出的全部 5 档（22/17/15/14/12pt）。
@@ -45,6 +54,8 @@ page {
      ⚠️ 这些令牌**不随主题变**，所以浅色块里**不要再抄一遍**。
      tests/theme.test.mjs 会按 /^(fs|fw|sp|r)-/ 前缀把它们识别为"共享令牌"，
      只要求"定义过"，不要求两套主题各有一份。 */
+  --fs-hero: 64rpx;       /* 32px 首页大卡的倒计时（2026-10-27 首页改版加的，只给首页用） */
+  --fs-big: 52rpx;        /* 26px 首页的大数字：大卡地图名、段位分、名次、今日局数 */
   --fs-display: 44rpx;    /* 22px 倒计时大数字（官方最大档） */
   --fs-title: 40rpx;      /* 20px 地图名 / 分数线 */
   --fs-head: 34rpx;       /* 17px 卡片主标题（官方正文档） */
@@ -96,6 +107,13 @@ page {
   --err-ink: #b02525;
   --warn-ink: #8a5a00;
   --info-ink: #2b5fa8;
+  --hero-bg: #1f2632;       /* 浅色页面上也是深色卡 */
+  --hero-line: #1f2632;
+  --hero-ink: #f3f5f9;
+  --hero-ink2: #b4bdcb;     /* 大卡底上 8.6:1 */
+  --hero-track: rgba(255, 255, 255, 0.16);
+  --hero-warn: #ffb020;
+  --prog: #3a6fd8;
 }
 
 page {
@@ -533,6 +551,8 @@ page {
   border-radius: var(--r-full);
 }
 .navbtn-on { color: #ffffff; background: var(--accent); border-color: var(--accent); }
+/* 「全部地图」（2026-10-27 起是子页面）左上角的返回，和 ⚙ 并排 */
+.navbtn-back { margin-right: var(--sp-3); font-size: var(--fs-title); line-height: 60rpx; }
 .navtitle { margin-left: var(--sp-4); font-size: var(--fs-section); font-weight: var(--fw-bold); color: var(--ink); }
 /* 22→24rpx：原值在官方最小档（12pt）之下。它是"数据什么时候更新的"，要读的实义信息。 */
 .navtime { margin-left: auto; font-size: var(--fs-min); color: var(--ink3); }

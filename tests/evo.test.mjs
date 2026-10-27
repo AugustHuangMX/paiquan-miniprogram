@@ -70,7 +70,7 @@ describe("evo · 统计（云函数 stats.js）", () => {
     const rows = [match()];
     const lobby = [{ read_at: "2026-10-26 21:10:00", rank_tier: "大师", rank_division: null, rank_progress: 120, score: 15120 }];
     assert.deepEqual(S.rankCard(rows, lobby),
-      { tier: "master", division: null, progress: 120, when: "2026-10-26 21:10:00", from_lobby: true });
+      { tier: "master", division: null, progress: 120, score: 15120, when: "2026-10-26 21:10:00", from_lobby: true });
     const older = [{ read_at: "2026-10-26 20:00:00", rank_tier: "白金", rank_division: "I", rank_progress: 0, score: 9000 }];
     assert.equal(S.rankCard(rows, older).tier, "diamond");
     assert.equal(S.rankCard(rows, older).division, "II");
@@ -275,5 +275,147 @@ describe("evo · 界面字段（evo/utils/view.js）", () => {
     assert.equal(v.devices[0].count, "云端 12 局 · Evo 0.4.1");
     assert.equal(v.accounts[0].names, "用过 2 个名字");
     assert.equal(v.accounts[1].names, "");
+  });
+});
+
+/* ============================================================
+   首页（2026-10-27）：云函数 home / crowd 的统计，和 view.js 的 homeView / crowdView
+   ============================================================ */
+describe("evo · 首页（段位条、今日、大家在玩什么）", () => {
+  const bounds = [[10000, "钻石 IV"], [11000, "钻石 III"], [12000, "钻石 II"], [13000, "钻石 I"], [14000, "大师"]];
+
+  test("段位条：离下一段还差多少、这一段走了百分之几；最高一段或读不出来时不画", () => {
+    assert.deepEqual(S.rankStep(12868, bounds), { next_tier: "diamond", next_division: "I", gap: 132, pct: 86.8 });
+    assert.equal(S.rankStep(14500, bounds), null, "大师往上没有下一段");
+    assert.equal(S.rankStep(9000, bounds), null, "比最低一段还低：不知道这一段从哪算起");
+    assert.equal(S.rankStep(null, bounds), null);
+    assert.equal(S.rankStep(12000, []), null);
+    assert.equal(S.rankStep(12000, bounds).pct, 0, "刚好在分界线上 = 这一段刚开始");
+  });
+
+  test("段位卡带上总分（段位条要用）", () => {
+    assert.equal(S.rankCard([match({ rank_score: 12868 })], []).score, 12868);
+    assert.equal(S.rankCard([match({ rank_score: 12868 })], [{ read_at: "2026-10-26 23:00:00", rank_tier: "钻石", rank_division: "II", rank_progress: 900, score: 12900 }]).score, 12900);
+  });
+
+  test("今日：击杀、伤害的总数要每局都读到才算（不把没读到的当作 0）", () => {
+    const d = S.dayNumbers([match({ placement: 2, kills: 4, damage: 1820, rp_delta: 45 }), match({ placement: 8, kills: 5, damage: 2300, rp_delta: 42 })]);
+    assert.deepEqual(d, { games: 2, avg_place: 5, kills: 9, damage: 4120, rp: 87 });
+    const missing = S.dayNumbers([match({ kills: 4 }), match({ kills: null, damage: null })]);
+    assert.equal(missing.kills, null);
+    assert.equal(missing.damage, null);
+    assert.equal(S.dayNumbers([match({ kills: 4 }), match({ kills: 9, kills_counted: true })]).kills, null, "计分次数不是击杀");
+    assert.deepEqual(S.dayNumbers([]), { games: 0, avg_place: null, kills: null, damage: null, rp: null });
+  });
+
+  test("几天前的那一刻写成电脑上的时间文字（和 ended_at 比大小）", () => {
+    const now = Date.UTC(2026, 9, 27, 12, 0, 0);   // 北京时间 20:00
+    assert.equal(S.daysAgoText(7, 480, now), "2026-10-20 20:00:00");
+  });
+
+  const crowdRow = (uid, legend, mates, placement) => ({ uid, legend, mates: mates.map((l) => ({ legend: l })), placement });
+
+  test("大家在玩什么：玩家不够时只回人数；够了回热门传奇和最好的组合", () => {
+    const few = [crowdRow("a", "动力小子", [], 3), crowdRow("b", "恶灵", [], 5)];
+    assert.deepEqual(S.crowdStats(few, { minPlayers: 5 }), { players: 2, enough: false });
+
+    const rows = [];
+    ["a", "b", "c", "d", "e"].forEach((uid) => {
+      rows.push(crowdRow(uid, "动力小子", ["地平线", "疯玛吉"], 4));
+      rows.push(crowdRow(uid, "恶灵", ["命脉", "直布罗陀"], 9));
+    });
+    rows.push(crowdRow("a", "地平线", ["动力小子", "疯玛吉"], 1));   // 同一组合换了人当"自己"，还是同一个组合
+    rows.push(crowdRow("a", null, [], 2));                            // 传奇没读到：不算进选用率
+    const c = S.crowdStats(rows, { minPlayers: 5 });
+    assert.equal(c.players, 5);
+    assert.equal(c.enough, true);
+    assert.equal(c.games, 12);
+    assert.deepEqual(c.legends.map((l) => l.name), ["动力小子", "恶灵", "地平线"]);
+    assert.deepEqual(c.legends.map((l) => l.pct), [45, 45, 9]);   // 5/11、5/11、1/11
+    assert.deepEqual(c.combo.legends.slice().sort(), ["地平线", "动力小子", "疯玛吉"].sort());
+    assert.equal(c.combo.games, 6);
+    assert.equal(c.combo.avg_place, 3.5);
+  });
+
+  test("组合：传奇没读全、名次没读到、局数不够的不算；没有够格的组合时是 null", () => {
+    const rows = ["a", "b", "c", "d", "e"].map((uid) => crowdRow(uid, "恶灵", ["命脉"], 1));   // 只有一个队友
+    rows.push(crowdRow("a", "恶灵", ["命脉", "直布罗陀"], null));
+    rows.push(crowdRow("b", "恶灵", ["命脉", "直布罗陀"], 2));
+    rows.push(crowdRow("c", "恶灵", ["命脉", "直布罗陀"], 3));
+    assert.equal(S.crowdStats(rows, { minPlayers: 5 }).combo, null, "只有 2 局读全了，不到 3 局");
+  });
+
+  const homeData = (over = {}) => Object.assign({
+    ok: true, bound: true, account: null, total: 40, synced_at: 1_000_000_000_000 - 5 * 60000,
+    rank: { tier: "diamond", division: "II", progress: 868, score: 12868, when: "2026-10-26 23:00:00", from_lobby: true },
+    step: { next_tier: "diamond", next_division: "I", gap: 132, pct: 86.8 },
+    day: { games: 6, avg_place: 5.2, kills: 9, damage: 4120, rp: 87 },
+    last: { id: "dev:9", placement: 2, rp: 45, legend: "动力小子", kills: 4, damage: 1820, map: "奥林匹斯" },
+  }, over);
+  const NOW = 1_000_000_000_000;
+
+  test("首页顶上：没绑定 / 绑定了没对局 / 有数据", () => {
+    assert.equal(view.homeView({ ok: true, bound: false }, ZH, 112, NOW).state, "unbound");
+    assert.equal(view.homeView(homeData({ total: 0 }), ZH, 112, NOW).state, "empty");
+    const v = view.homeView(homeData(), ZH, 112, NOW);
+    assert.equal(v.state, "ready");
+    assert.equal(v.synced, "Evo 同步于 5 分钟前");
+    assert.equal(v.rank.name, "钻石 II");
+    assert.equal(v.rank.progress, "868");
+    assert.deepEqual(v.step.gap, { pre: "升钻石 I 还差 ", n: "132", post: "" });
+    assert.equal(v.todayRp, "+87");
+    assert.equal(v.games, "6");
+    assert.equal(v.avgPlace, "#5.2");
+    assert.equal(v.damage, "4,120");
+    assert.equal(v.last.place, "#2");
+    assert.equal(v.last.rp, "+45 RP");
+    assert.equal(v.last.legend, "动力小子");
+    assert.equal(v.last.line, "4 杀 · 1,820 伤害 · 奥林匹斯");
+    assert.equal(v.last.shareTitle, "我刚在奥林匹斯拿了第 2 名");
+  });
+
+  test("首页顶上：读不出来的是—；名次没读到时不给分享（不编名次）", () => {
+    const v = view.homeView(homeData({ day: { games: 1, avg_place: null, kills: null, damage: null, rp: null }, step: null,
+      last: { id: "dev:9", placement: null, rp: null, legend: null, kills: null, damage: null, map: null } }), ZH, 112, NOW);
+    assert.equal(v.avgPlace, "—");
+    assert.equal(v.kills, "—");
+    assert.equal(v.todayRp, "—");
+    assert.equal(v.step, null);
+    assert.equal(v.last.place, "—");
+    assert.equal(v.last.rp, "");
+    assert.equal(v.last.line, "");
+    assert.equal(v.last.shareTitle, "");
+  });
+
+  test("首页顶上英文：语序跟着语言（数字在前），没有中文", () => {
+    const v = view.homeView(homeData(), EN, 112, NOW);
+    assert.equal(v.synced, "Evo synced 5m ago");
+    assert.deepEqual(v.step.gap, { pre: "", n: "132", post: " to Diamond I" });
+    assert.equal(v.last.line, "4 kills · 1,820 dmg · Olympus");
+    assert.equal(v.last.shareTitle, "I just placed #2 on Olympus");
+    const text = JSON.stringify([v.synced, v.rank.name, v.step, v.last.legend, v.last.line, v.last.shareTitle]);
+    assert.ok(!CJK.test(text), text);
+  });
+
+  test("大家在玩什么：人数不够、没有数据时整块不显示；条的长短按最热门的算", () => {
+    assert.equal(view.crowdView({ ok: true, players: 2, enough: false, days: 7 }, ZH), null);
+    assert.equal(view.crowdView(null, ZH), null);
+    const v = view.crowdView({ ok: true, days: 7, players: 12, enough: true, games: 80,
+      legends: [{ name: "动力小子", pct: 18 }, { name: "地平线", pct: 14 }, { name: "没见过的传奇", pct: 9 }],
+      combo: { legends: ["动力小子", "地平线", "疯玛吉"], avg_place: 6.1, games: 23 } }, ZH);
+    assert.equal(v.source, "来自 12 位 Evo 玩家 · 近 7 天");
+    assert.deepEqual(v.legends.map((l) => l.pct), ["18%", "14%", "9%"]);
+    assert.deepEqual(v.legends.map((l) => l.width), [100, 77.78, 50]);
+    assert.equal(v.legends[2].icon, "", "图鉴里没有的传奇没有头像，显示名字的第一个字");
+    assert.equal(v.legends[2].letter, "没");
+    assert.equal(v.combo.names, "动力小子 · 地平线 · 疯玛吉");
+    assert.equal(v.combo.avg, "#6.1");
+    assert.equal(v.combo.games, "23");
+    const en = view.crowdView({ ok: true, days: 7, players: 12, enough: true, legends: [{ name: "动力小子", pct: 18 }], combo: null }, EN);
+    assert.equal(en.source, "12 Evo players · last 7 days");
+    assert.equal(view.crowdView({ ok: true, days: 7, players: 1, enough: true, legends: [{ name: "动力小子", pct: 18 }], combo: null }, EN).source,
+      "1 Evo player · last 7 days", "单数不加 s");
+    assert.equal(en.legends[0].name, "Octane");
+    assert.equal(en.combo, null);
   });
 });

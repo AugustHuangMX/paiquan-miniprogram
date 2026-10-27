@@ -1,0 +1,107 @@
+/* 首页（2026-10-27）。颜色只用 app.wxss 的令牌（var(--x)）；字号只用令牌，--fs-hero / --fs-big 是首页加的两档。
+   分包 evo 的 evo-home、evo-crowd 两个组件（styleIsolation: apply-shared）也用这里的
+   .hsec / .hcard / .hpair / .hbar / .hpressed，两边长得一样。 */
+
+/* ---------- 导航栏：品牌标 + 名字 + 问候语 ---------- */
+.hnav { margin-bottom: var(--sp-4); }
+.hnav-logo { flex: none; width: 64rpx; height: 64rpx; border-radius: var(--r-lg); }
+.hnav-main { flex: 1; min-width: 0; margin-left: var(--sp-4); display: flex; flex-direction: column; line-height: 1.3; }
+.hnav-t { font-size: var(--fs-head); font-weight: var(--fw-bold); color: var(--ink); }
+.hnav-s { font-size: var(--fs-min); color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 按下去的反馈：只变透明度，不改尺寸（不让周围的东西跳） */
+.hpressed { opacity: 0.7; }
+
+/* ---------- 区块标题：左边标题，右边链接或说明 ---------- */
+.hsec { display: flex; align-items: center; justify-content: space-between; margin: var(--sp-8) 0 var(--sp-3); }
+.hsec-t { flex: none; font-size: var(--fs-head); font-weight: var(--fw-bold); color: var(--ink); }
+/* 上下留白是为了热区：整行约 40pt 高 */
+.hsec-link { font-size: var(--fs-sub); color: var(--info-ink); padding: var(--sp-5) 0 var(--sp-5) var(--sp-8); }
+.hsec-hint { min-width: 0; margin-left: var(--sp-4); font-size: var(--fs-min); color: var(--ink3); text-align: right; }
+
+/* ---------- 卡片 ---------- */
+.hcard {
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+  box-sizing: border-box;
+}
+.hpair { display: flex; align-items: stretch; margin-top: var(--sp-4); }
+.hpair .hcard { flex: 1; min-width: 0; }
+.hcard-l { margin-right: var(--sp-4); }
+
+/* 进度条：槽是 --track，填充色由用的地方给（地图配色 / --prog） */
+.hbar { height: 8rpx; margin-top: var(--sp-4); border-radius: var(--r-full); background: var(--track); overflow: hidden; }
+.hbar-in { height: 100%; border-radius: var(--r-full); }
+
+/* ---------- 现在玩什么：深色大卡（两套主题都是深色，令牌见 app.wxss 的 --hero-*） ---------- */
+.hhero {
+  position: relative;
+  overflow: hidden;
+  background: var(--hero-bg);
+  border: 1rpx solid var(--hero-line);
+  border-radius: var(--r-xl);
+  padding: var(--sp-8);
+  color: var(--hero-ink);
+}
+.hhero-skel { height: 300rpx; box-sizing: border-box; }
+/* 装饰等高线：白线压到很淡，不抢字（字在它上面，见下面各行的 position: relative） */
+.hhero-deco { position: absolute; top: 0; right: 0; width: 80%; height: 100%; opacity: 0.1; pointer-events: none; }
+.hhero-top { position: relative; display: flex; align-items: center; justify-content: space-between; }
+.hhero-chip {
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-bold);
+  color: #ffffff;
+  background: var(--accent);
+  border-radius: var(--r-sm);
+  padding: var(--sp-1) var(--sp-4);
+}
+.hhero-lab { font-size: var(--fs-sub); color: var(--hero-ink2); }
+.hhero-map {
+  position: relative;
+  display: block;
+  margin-top: var(--sp-4);
+  font-size: var(--fs-big);
+  font-weight: var(--fw-num);
+  line-height: 1.25;
+  color: var(--hero-ink);
+}
+.hhero-off { font-size: var(--fs-head); font-weight: var(--fw-bold); }
+.hhero-row { position: relative; display: flex; align-items: flex-end; justify-content: space-between; }
+.hhero-sub { flex: 1; min-width: 0; margin-right: var(--sp-4); padding-bottom: var(--sp-2); font-size: var(--fs-sub); color: var(--hero-ink2); }
+.hhero-cd {
+  flex: none;
+  font-size: var(--fs-hero);
+  font-weight: var(--fw-num);
+  line-height: 1.1;
+  color: var(--hero-ink);
+  font-variant-numeric: tabular-nums;
+}
+.hhero-cd-urgent { color: var(--hero-warn); }
+.hbar-hero { position: relative; margin-top: var(--sp-5); background: var(--hero-track); }
+
+/* ---------- 其余模式：并排小卡 ---------- */
+.hsmalls { display: flex; align-items: stretch; margin-top: var(--sp-4); }
+.hsmall {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin-right: var(--sp-4);
+  padding: var(--sp-5);
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: var(--r-xl);
+}
+.hsmall-end { margin-right: 0; }
+.hsmall-lab { font-size: var(--fs-min); color: var(--ink2); line-height: 1.4; }
+.hsmall-map { margin-top: var(--sp-2); font-size: var(--fs-section); font-weight: var(--fw-bold); color: var(--ink); line-height: 1.35; }
+/* 撑开剩下的高度：三张卡的进度条才能对齐在同一条线上 */
+.hsmall-soon { flex: 1; margin-top: var(--sp-1); font-size: var(--fs-min); color: var(--ink2); line-height: 1.4; }
+
+/* ---------- 赛事与更多 ---------- */
+.hmore { display: flex; flex-direction: column; }
+.hmore-ic { width: 48rpx; height: 48rpx; }
+.hmore-t { margin-top: var(--sp-4); font-size: var(--fs-head); font-weight: var(--fw-bold); color: var(--ink); line-height: 1.35; }
+.hmore-s { margin-top: var(--sp-1); font-size: var(--fs-sub); color: var(--ink2); }

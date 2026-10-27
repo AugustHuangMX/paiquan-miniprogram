@@ -1,0 +1,39 @@
+<!-- 大家在玩什么：所有 Evo 玩家近 7 天。字段由 evo/utils/view.js 的 crowdView() 拼好；v 为 null 时整块不显示 -->
+<view wx:if="{{v}}" class="evo">
+  <view class="hsec">
+    <text class="hsec-t">{{T.crowdTitle}}</text>
+    <text class="hsec-hint">{{v.source}}</text>
+  </view>
+
+  <view class="hpair">
+    <!-- 热门传奇：前 3 个和各自的选用率，条的长短按最热门的那个算 -->
+    <view class="hcard {{v.combo ? 'hcard-l' : ''}}">
+      <text class="evo-cw-k">{{T.crowdLegends}}</text>
+      <view wx:for="{{v.legends}}" wx:key="key" class="evo-cw-lg">
+        <view class="evo-cw-line">
+          <image wx:if="{{item.icon}}" class="evo-cw-face" src="{{item.icon}}" mode="aspectFill"></image>
+          <text wx:else class="evo-cw-face evo-cw-face-t">{{item.letter}}</text>
+          <text class="evo-cw-name">{{item.name}}</text>
+          <text class="evo-cw-pct">{{item.pct}}</text>
+        </view>
+        <view class="hbar evo-cw-bar"><view class="hbar-in evo-cw-fill" style="width: {{item.width}}%;"></view></view>
+      </view>
+    </view>
+
+    <!-- 场均名次最好的三人组合（至少 3 局才算） -->
+    <view wx:if="{{v.combo}}" class="hcard">
+      <text class="evo-cw-k">{{T.crowdCombo}}</text>
+      <view class="evo-cw-faces">
+        <block wx:for="{{v.combo.faces}}" wx:key="key">
+          <image wx:if="{{item.icon}}" class="evo-cw-big {{index ? 'evo-cw-over' : ''}}" src="{{item.icon}}" mode="aspectFill"></image>
+          <text wx:else class="evo-cw-big evo-cw-big-t {{index ? 'evo-cw-over' : ''}}">{{item.letter}}</text>
+        </block>
+      </view>
+      <text class="evo-cw-names">{{v.combo.names}}</text>
+      <view class="evo-cw-nums">
+        <view class="evo-cw-num"><text class="evo-cw-v">{{v.combo.avg}}</text><text class="evo-cw-u">{{T.crowdAvgPlace}}</text></view>
+        <view class="evo-cw-num"><text class="evo-cw-v">{{v.combo.games}}</text><text class="evo-cw-u">{{T.evoGamesUnit}}</text></view>
+      </view>
+    </view>
+  </view>
+</view>

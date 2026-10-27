@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 首页「把战绩带到手机上」：电脑（蓝）→ 手机（红） -->
+  <rect x="2" y="6" width="19" height="14" rx="2" stroke="#4f7fe0"/>
+  <path d="M8 27h7M11.5 20v7" stroke="#4f7fe0"/>
+  <path d="M7.5 13h7M12 10.5l2.5 2.5-2.5 2.5" stroke="#4f7fe0"/>
+  <rect x="24" y="12" width="10" height="18" rx="2.5" stroke="#d92b2b"/>
+  <path d="M28 26.5h2" stroke="#d92b2b"/>
+</svg>

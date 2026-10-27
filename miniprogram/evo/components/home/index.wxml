@@ -1,0 +1,98 @@
+<!-- 首页顶上那块：没绑定时教怎么绑定；绑定了显示段位、今日、上一局。字段由 evo/utils/view.js 的 homeView() 拼好 -->
+<view class="evo">
+  <!-- 读取中：和读好后差不多高的空卡片，免得页面跳 -->
+  <view wx:if="{{state === 'loading'}}" class="hcard evo-hm-skel"></view>
+
+  <!-- 没绑定电脑：说清楚这是什么、三步怎么绑 -->
+  <view wx:elif="{{state === 'unbound'}}" class="hcard">
+    <view class="evo-hm-head">
+      <image class="evo-hm-ic" src="/evo/assets/link-pc.svg" mode="aspectFit"></image>
+      <view class="evo-grow">
+        <text class="evo-hm-title">{{T.evoHomeTitle}}</text>
+        <text class="evo-hm-body">{{T.evoHomeBody}}</text>
+      </view>
+    </view>
+    <view class="evo-hm-steps">
+      <view class="evo-hm-step"><text class="evo-hm-step-n">1</text><text class="evo-hm-step-t">{{T.evoHomeStep1}}</text></view>
+      <view class="evo-hm-step"><text class="evo-hm-step-n">2</text><text class="evo-hm-step-t">{{T.evoHomeStep2}}</text></view>
+      <view class="evo-hm-step evo-hm-step-end"><text class="evo-hm-step-n">3</text><text class="evo-hm-step-t">{{T.evoHomeStep3}}</text></view>
+    </view>
+    <view class="evo-hm-btns">
+      <view class="evo-hm-scan" hover-class="hpressed" bindtap="onScan">{{T.evoScan}}</view>
+      <view class="evo-hm-learn" hover-class="hpressed" bindtap="onLearn">{{T.evoLearn}}</view>
+    </view>
+    <text class="evo-hm-note">{{T.evoHomeNote}}</text>
+  </view>
+
+  <!-- 绑定了，还没有对局 -->
+  <view wx:elif="{{state === 'empty'}}" class="hcard">
+    <text class="evo-hm-title">{{T.evoBoundTitle}}</text>
+    <text class="evo-hm-body">{{T.evoBoundBody}}</text>
+  </view>
+
+  <block wx:elif="{{state === 'ready'}}">
+    <!-- 我的段位：点进「战绩」看完整的走势和对局 -->
+    <view class="hcard" hover-class="hpressed" bindtap="onStats">
+      <view class="evo-hm-row">
+        <text class="evo-hm-k">{{T.evoMyRank}}</text>
+        <view wx:if="{{v.synced}}" class="evo-hm-sync"><view class="evo-hm-dot"></view><text>{{v.synced}}</text></view>
+      </view>
+      <view class="evo-hm-rank">
+        <block wx:if="{{v.rank}}">
+          <view wx:if="{{v.rank.hasEmblem}}" class="evo-hm-emblem">
+            <image class="evo-hm-emblem-img" src="{{v.rank.emblem}}" webp="{{true}}" mode="aspectFit"></image>
+            <text wx:if="{{v.rank.division}}" class="evo-hm-numeral" style="left: {{v.rank.plateLeft}}%; top: {{v.rank.plateTop}}%; font-size: {{v.rank.plateFont}}rpx;">{{v.rank.division}}</text>
+          </view>
+          <view wx:else class="evo-hm-letter">{{v.rank.letter}}</view>
+          <view class="evo-grow">
+            <text class="evo-hm-tier">{{v.rank.name}}</text>
+            <view wx:if="{{v.rank.progress}}" class="evo-hm-num"><text class="evo-hm-big">{{v.rank.progress}}</text><text class="evo-hm-unit">RP</text></view>
+          </view>
+        </block>
+        <text wx:else class="evo-grow evo-dim">{{T.evoRankNone}}</text>
+        <view class="evo-hm-today">
+          <text class="evo-hm-k">{{T.evoTodayShort}}</text>
+          <text class="evo-hm-big evo-rp-{{v.todayRpCls}}">{{v.todayRp}}</text>
+        </view>
+      </view>
+      <block wx:if="{{v.step}}">
+        <view class="hbar"><view class="hbar-in evo-hm-prog" style="width: {{v.step.pct}}%;"></view></view>
+        <view class="evo-hm-row evo-hm-steprow">
+          <text>{{v.rank.name}}</text>
+          <text>{{v.step.gap.pre}}<text class="evo-hm-strong">{{v.step.gap.n}}</text>{{v.step.gap.post}}</text>
+        </view>
+      </block>
+    </view>
+
+    <view class="hpair">
+      <!-- 今日：局数、场均名次、击杀和伤害的总数（有一局没读到总数就是"—"） -->
+      <view class="hcard {{v.last ? 'hcard-l' : ''}}" hover-class="hpressed" bindtap="onStats">
+        <text class="evo-hm-k">{{T.evoTodayShort}}</text>
+        <view class="evo-hm-num"><text class="evo-hm-big">{{v.games}}</text><text class="evo-hm-unit">{{T.evoGamesUnit}}</text></view>
+        <view class="evo-hm-kv"><text>{{T.evoAvgPlace}}</text><text class="evo-hm-strong">{{v.avgPlace}}</text></view>
+        <view class="evo-hm-kv"><text>{{T.evoKillsTotal}}</text><text class="evo-hm-strong">{{v.kills}}</text></view>
+        <view class="evo-hm-kv"><text>{{T.evoDamage}}</text><text class="evo-hm-strong">{{v.damage}}</text></view>
+      </view>
+
+      <!-- 上一局：点开看单局详情；右上角转发给好友 -->
+      <view wx:if="{{v.last}}" class="hcard" hover-class="hpressed" data-id="{{v.last.id}}" bindtap="onMatch">
+        <view class="evo-hm-row">
+          <text class="evo-hm-k">{{T.evoLastMatch}}</text>
+          <button wx:if="{{v.last.shareTitle}}" class="evo-hm-share" open-type="share" data-title="{{v.last.shareTitle}}" aria-label="{{T.evoShare}}" catchtap="onShareTap">
+            <image class="evo-hm-share-ic" src="/evo/assets/share.svg" mode="aspectFit"></image>
+          </button>
+        </view>
+        <view class="evo-hm-num">
+          <text class="evo-hm-big evo-hm-place">{{v.last.place}}</text>
+          <text wx:if="{{v.last.rp}}" class="evo-hm-lastrp evo-rp-{{v.last.rpCls}}">{{v.last.rp}}</text>
+        </view>
+        <view wx:if="{{v.last.legend}}" class="evo-hm-lg">
+          <image wx:if="{{v.last.icon}}" class="evo-hm-face" src="{{v.last.icon}}" mode="aspectFill"></image>
+          <text wx:else class="evo-hm-face evo-hm-face-t">{{v.last.letter}}</text>
+          <text class="evo-hm-lgname">{{v.last.legend}}</text>
+        </view>
+        <text wx:if="{{v.last.line}}" class="evo-hm-line">{{v.last.line}}</text>
+      </view>
+    </view>
+  </block>
+</view>

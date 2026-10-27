@@ -1,5 +1,6 @@
 {
   "pages": [
+    "pages/home/home",
     "pages/maps/maps",
     "pages/predator/predator",
     "pages/matches/matches",
@@ -34,10 +35,10 @@
     "borderStyle": "black",
     "list": [
       {
-        "pagePath": "pages/maps/maps",
-        "text": "地图",
-        "iconPath": "assets/tab-maps.png",
-        "selectedIconPath": "assets/tab-maps-on.png"
+        "pagePath": "pages/home/home",
+        "text": "首页",
+        "iconPath": "assets/tab-home.png",
+        "selectedIconPath": "assets/tab-home-on.png"
       },
       {
         "pagePath": "pages/predator/predator",
