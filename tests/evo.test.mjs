@@ -6,7 +6,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -223,6 +223,17 @@ describe("evo · 界面字段（evo/utils/view.js）", () => {
     const rookie = view.overview(overviewData({ rank: { tier: "rookie", division: "IV", progress: 1, when: null, from_lobby: false } }), ZH, 160);
     assert.equal(rookie.rank.hasEmblem, false, "菜鸟没有徽章图，用字母方块");
     assert.equal(rookie.rank.letter, "R4");
+  });
+
+  test("分包里的每张图片，代码里都完整写着它的路径（拼出来的路径开发者工具认不出，预览、上传时会被当成没用到滤掉）", () => {
+    const list = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+      d.isDirectory() ? list(path.join(dir, d.name)) : [path.join(dir, d.name)]);
+    const files = list(path.join(MP, "evo"));
+    const code = files.filter((f) => /\.(js|wxml|wxss|json)$/.test(f)).map((f) => readFileSync(f, "utf8")).join("\n");
+    const missing = files.filter((f) => /\.(webp|png|jpg|svg)$/.test(f))
+      .map((f) => "/" + path.relative(MP, f).split(path.sep).join("/"))
+      .filter((p) => !code.includes('"' + p + '"'));
+    assert.deepEqual(missing, [], "这些图片的路径没有完整写在代码里，手机上会显示不出来");
   });
 
   test("英文模式：拼出来的显示文字里没有中文（认得的传奇、地图、段位）", () => {
