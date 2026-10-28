@@ -38,19 +38,13 @@ var TIER_EN = {
   rookie: "Rookie", bronze: "Bronze", silver: "Silver", gold: "Gold", platinum: "Platinum",
   diamond: "Diamond", master: "Master", predator: "Apex Predator"
 };
-// 段位徽章图片（evo/assets/ranks/<tier>.webp）上写段数的铭牌在哪：x、y 是铭牌中心占图片宽高的百分比，h 是铭牌高度的百分比
+// 段位徽章图片（evo/assets/ranks/<tier>.png）上写段数的铭牌在哪：x、y 是铭牌中心占图片宽高的百分比，h 是铭牌高度的百分比
 // （数值是生成徽章图时量出来的，见 Evo 仓库 miniprogram/tools/make_assets.py）。菜鸟没有徽章图，用字母方块
+// 徽章用 256 色 png，不用 webp：iPhone 上的微信显示不了包里的 webp（报 getLocalImgData:fail，模拟器里正常；2026-10-28 真机试过）
 var RANK_PLATES = {
   bronze: { x: 49.8, y: 83, h: 24.6 }, silver: { x: 50, y: 82.1, h: 24.1 }, gold: { x: 50, y: 82.5, h: 24.1 },
   platinum: { x: 49.8, y: 82.8, h: 24.2 }, diamond: { x: 49.9, y: 79.5, h: 20.8 }, master: { x: 50.2, y: 84.6, h: 18.1 },
   predator: { x: 50, y: 82.5, h: 14 }
-};
-// 徽章图片的路径要一个个完整写出来，不能拼：开发者工具预览、上传时会过滤"没用到"的文件，
-// 拼出来的路径它认不出来，徽章就不会打进包里（模拟器里照样显示，手机上空白；2026-10-28 真机上踩过）
-var RANK_EMBLEMS = {
-  bronze: "/evo/assets/ranks/bronze.webp", silver: "/evo/assets/ranks/silver.webp", gold: "/evo/assets/ranks/gold.webp",
-  platinum: "/evo/assets/ranks/platinum.webp", diamond: "/evo/assets/ranks/diamond.webp",
-  master: "/evo/assets/ranks/master.webp", predator: "/evo/assets/ranks/predator.webp"
 };
 var TIER_LETTER = { rookie: "R", bronze: "B", silver: "S", gold: "G", platinum: "P", diamond: "D", master: "M", predator: "A" };
 var DIVISION_NUMBER = { IV: 4, III: 3, II: 2, I: 1 };
@@ -184,8 +178,7 @@ function rows(list, ctx) {
 function rankView(rank, ctx, emblemRpx) {
   if (!rank) return null;
   var T = ctx.T;
-  var emblem = RANK_EMBLEMS[rank.tier] || "";
-  var plate = emblem ? RANK_PLATES[rank.tier] : null;
+  var plate = RANK_PLATES[rank.tier];
   var number = DIVISION_NUMBER[rank.division];
   var when = timeText(rank.when, ctx);
   return {
@@ -194,7 +187,7 @@ function rankView(rank, ctx, emblemRpx) {
     division: number ? rank.division : "",
     letter: (TIER_LETTER[rank.tier] || "?") + (number || ""),
     hasEmblem: Boolean(plate),
-    emblem: emblem,
+    emblem: "/evo/assets/ranks/" + rank.tier + ".png",
     plateLeft: plate ? plate.x : 0,
     plateTop: plate ? plate.y : 0,
     plateFont: plate ? Math.round(emblemRpx * plate.h / 100 * 0.7) : 0,   // 同 Evo 窗口：铭牌高度的 70%

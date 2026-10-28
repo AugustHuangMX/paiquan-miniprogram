@@ -50,7 +50,7 @@
         </block>
         <view wx:elif="{{v.rank}}" class="evo-rank">
           <view wx:if="{{v.rank.hasEmblem}}" class="evo-emblem">
-            <image class="evo-emblem-img" src="{{v.rank.emblem}}" webp="{{true}}" mode="aspectFit"></image>
+            <image class="evo-emblem-img" src="{{v.rank.emblem}}" mode="aspectFit"></image>
             <text wx:if="{{v.rank.division}}" class="evo-numeral" style="left: {{v.rank.plateLeft}}%; top: {{v.rank.plateTop}}%; font-size: {{v.rank.plateFont}}rpx;">{{v.rank.division}}</text>
           </view>
           <view wx:else class="evo-letter">{{v.rank.letter}}</view>

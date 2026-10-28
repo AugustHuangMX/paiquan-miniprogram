@@ -66,7 +66,7 @@
 | `matches/` | 全部对局（筛选模式 / 只看待确认 / 切账号，每页 20 局） |
 | `match/` | 单局详情（这一局的数字 + 两名队友） |
 | `bind/` | 绑定确认（扫码后打开；小程序码的 scene 或 Evo 二维码的 c 是绑定码） |
-| `assets/ranks/*.webp` | 段位徽章（7 张，104 KB；EA 的游戏素材，同 `assets/heroes/`） |
+| `assets/ranks/*.png` | 段位徽章（7 张 256 色 png，80 KB；EA 的游戏素材，同 `assets/heroes/`。不用 webp：iPhone 上的微信显示不了包里的 webp） |
 
 > 页面 js 里**只该有**：`onLoad/onShow`、`cloud.callCloud`、`setData`。
 > 任何判断/换算逻辑都应该在 `utils/` 的纯函数里（否则没法测）。
