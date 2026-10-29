@@ -9,8 +9,8 @@ const db = cloud.database()
 const _ = db.command
 
 // 小程序码打开哪个版本：发布前用开发版（扫码的人要是开发者，开发者工具里点过"上传"才有开发版）；
-// 正式发布后改成 release（evo_pc/index.js 的 QR_ENV_VERSION 一起改），下一次运行会清掉旧版本的码重新生成
-const QR_ENV_VERSION = 'develop'
+// 正式发布后改成 release（evo_pc/index.js 的 QR_ENV_VERSION 一起改），下一次运行会清掉旧版本的码重新生成。2026-10-29 已改
+const QR_ENV_VERSION = 'release'
 const POOL_SIZE = 6 // 备好几个（绑定一台电脑才用一个）
 const PER_RUN = 2 // 每次最多补几个：云函数默认 3 秒超时，生成一个要几百毫秒
 const TIME_BUDGET_MS = 1800

@@ -22,7 +22,7 @@ const MAX_MATCHES = 20 // 一次最多收几局（云函数默认 3 秒超时，
 const MAX_LOBBY = 100
 const MAX_DELETED = 100
 const MAX_ACCOUNTS = 20
-const QR_ENV_VERSION = 'develop' // 码池里的小程序码打开哪个版本，同 evo_qrpool/index.js（正式发布后两边一起改成 release）
+const QR_ENV_VERSION = 'release' // 码池里的小程序码打开哪个版本，同 evo_qrpool/index.js（2026-10-29 派圈助手正式发布，两边一起改成 release）
 
 // 只取认调用者用的一项：context.environ 里还有临时密钥，不能整个用
 function callerUid(context) {
